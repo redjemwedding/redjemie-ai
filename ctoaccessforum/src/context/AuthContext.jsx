@@ -6,7 +6,7 @@ import {
   sendPasswordResetEmail, updateProfile,
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db, googleProvider } from './firebase'
+import { auth, db, googleProvider } from '@/lib/firebase'
 import toast from 'react-hot-toast'
 
 const AuthCtx = createContext(null)
