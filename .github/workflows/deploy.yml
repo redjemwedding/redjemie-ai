@@ -3,15 +3,10 @@ name: Build and Deploy CTO Forum to Firebase
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'ctoaccessforum/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ctoaccessforum
 
     steps:
       - name: Checkout code
@@ -21,13 +16,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: ctoaccessforum/package-lock.json
 
       - name: Install dependencies
+        working-directory: ctoaccessforum
         run: npm install
 
       - name: Build
+        working-directory: ctoaccessforum
         run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -47,4 +42,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: cto-forum-c2887
-          entryPoint: ctoaccessforum
+          entryPoint: ./ctoaccessforum
