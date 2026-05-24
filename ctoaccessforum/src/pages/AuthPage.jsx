@@ -13,7 +13,6 @@ export default function AuthPage() {
   const [resetEm,  setResetEm]  = useState('')
   const [attempts, setAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState(0)
-  const [needsCode, setNeedsCode] = useState(false)
 
   async function handleSignIn() {
     if (Date.now() < lockedUntil) { toast.error(`Too many attempts. Try again in ${Math.ceil((lockedUntil-Date.now())/60000)} min.`); return }
@@ -47,7 +46,7 @@ export default function AuthPage() {
     try {
       await signInWithGoogle(null)
     } catch(e) {
-      if (e.message === 'NEEDS_INVITE_CODE') { setNeedsCode(true); setTab('google-code') }
+      if (e.message === 'NEEDS_INVITE_CODE') { setTab('google-code') }
       else if (e.code !== 'auth/popup-closed-by-user') toast.error(e.message)
     } finally { setLoading(false) }
   }
@@ -68,14 +67,14 @@ export default function AuthPage() {
     finally { setLoading(false) }
   }
 
-  const Inp = ({value,onChange,...p}) => (
-    <input value={value} onChange={e=>onChange(e.target.value)}
-      className="w-full bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-all" {...p}/>
-  )
-  const Btn = ({children,onClick,className=''}) => (
-    <button onClick={onClick} disabled={loading}
-      className={`w-full py-2.5 font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] transition-all disabled:opacity-50 ${className}`}>
-      {loading ? <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/> : children}
+  const inputCls = "w-full bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-all"
+  const btnCls   = "w-full py-2.5 font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] transition-all disabled:opacity-50 cursor-pointer border-0"
+
+  const GoogleBtn = ({ label='Continue with Google' }) => (
+    <button type="button" onClick={handleGoogle} disabled={loading}
+      className={`${btnCls} bg-white/[.04] border border-white/[.08] text-white hover:bg-white/[.07] flex items-center justify-center gap-2.5`}>
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>
+      {label}
     </button>
   )
 
@@ -89,30 +88,44 @@ export default function AuthPage() {
           <div className="text-[0.52rem] font-bold tracking-[.22em] text-gray-500 uppercase mt-1">University Platform</div>
         </div>
 
-        {/* Card */}
         <div className="bg-[#161616] border border-white/[.06] rounded-[18px] p-8 red-topline animate-fadeUp" style={{boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
 
           {/* SIGN IN */}
           {tab === 'signin' && (
             <div className="animate-fadeIn">
               <div className="flex bg-[#1E1E1E] border border-white/[.06] rounded-[10px] p-0.5 gap-0.5 mb-6">
-                <button onClick={()=>setTab('signin')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] bg-[#E5181B] text-white">Sign In</button>
-                <button onClick={()=>setTab('signup')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] text-gray-500 hover:text-white transition-all">Create Account</button>
+                <button type="button" onClick={()=>setTab('signin')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] bg-[#E5181B] text-white">Sign In</button>
+                <button type="button" onClick={()=>setTab('signup')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] text-gray-500 hover:text-white transition-all">Create Account</button>
               </div>
               <div className="flex flex-col gap-4">
-                <Inp type="email" placeholder="Email address" value={email} onChange={setEmail} autoComplete="email"/>
+                <input
+                  id="signin-email"
+                  name="email"
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className={inputCls}
+                />
                 <div>
-                  <Inp type="password" placeholder="Password" value={password} onChange={setPassword} autoComplete="current-password"/>
-                  <button onClick={()=>setTab('reset')} className="text-[0.68rem] text-gray-500 hover:text-gray-300 mt-1.5 float-right">Forgot password?</button>
+                  <input
+                    id="signin-password"
+                    name="password"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    className={inputCls}
+                  />
+                  <button type="button" onClick={()=>setTab('reset')} className="text-[0.68rem] text-gray-500 hover:text-gray-300 mt-1.5 float-right">Forgot password?</button>
                 </div>
-                <Btn onClick={handleSignIn} className="bg-[#E5181B] hover:bg-[#C01215] text-white mt-1">Sign In</Btn>
+                <button type="button" onClick={handleSignIn} disabled={loading} className={`${btnCls} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>
+                  {loading ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : 'Sign In'}
+                </button>
                 <div className="relative my-1 text-center"><div className="absolute top-1/2 left-0 right-0 h-px bg-white/[.06]"/><span className="relative bg-[#161616] px-2.5 text-[0.7rem] text-gray-500">or</span></div>
-                <Btn onClick={handleGoogle} className="bg-white/[.04] border border-white/[.08] text-white hover:bg-white/[.07]">
-                  <span className="flex items-center justify-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>
-                    Continue with Google
-                  </span>
-                </Btn>
+                <GoogleBtn />
               </div>
             </div>
           )}
@@ -121,25 +134,58 @@ export default function AuthPage() {
           {tab === 'signup' && (
             <div className="animate-fadeIn">
               <div className="flex bg-[#1E1E1E] border border-white/[.06] rounded-[10px] p-0.5 gap-0.5 mb-6">
-                <button onClick={()=>setTab('signin')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] text-gray-500 hover:text-white transition-all">Sign In</button>
-                <button onClick={()=>setTab('signup')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] bg-[#E5181B] text-white">Create Account</button>
+                <button type="button" onClick={()=>setTab('signin')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] text-gray-500 hover:text-white transition-all">Sign In</button>
+                <button type="button" onClick={()=>setTab('signup')} className="flex-1 py-2 rounded-[8px] text-[0.76rem] font-bold font-[Montserrat] bg-[#E5181B] text-white">Create Account</button>
               </div>
               <div className="flex flex-col gap-3.5">
-                <Inp type="text" placeholder="Full name" value={name} onChange={setName}/>
-                <Inp type="email" placeholder="Email address" value={email} onChange={setEmail} autoComplete="email"/>
-                <Inp type="password" placeholder="Password (min 8 characters)" value={password} onChange={setPassword}/>
+                <input
+                  id="signup-name"
+                  name="fullname"
+                  type="text"
+                  placeholder="Full name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  autoComplete="name"
+                  className={inputCls}
+                />
+                <input
+                  id="signup-email"
+                  name="email"
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className={inputCls}
+                />
+                <input
+                  id="signup-password"
+                  name="password"
+                  type="password"
+                  placeholder="Password (min 8 characters)"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className={inputCls}
+                />
                 <div>
-                  <Inp type="text" placeholder="Invite code e.g. CTOADMIN1" value={code} onChange={v=>setCode(v.toUpperCase())} className="tracking-widest"/>
+                  <input
+                    id="signup-code"
+                    name="invitecode"
+                    type="text"
+                    placeholder="Invite code e.g. CTOADMIN1"
+                    value={code}
+                    onChange={e => setCode(e.target.value.toUpperCase())}
+                    autoComplete="off"
+                    className={`${inputCls} tracking-widest`}
+                  />
                   <p className="text-[0.67rem] text-gray-500 mt-1.5">Required to join — get your code from the admin.</p>
                 </div>
-                <Btn onClick={handleSignUp} className="bg-[#E5181B] hover:bg-[#C01215] text-white mt-1">🚀 Create Account</Btn>
+                <button type="button" onClick={handleSignUp} disabled={loading} className={`${btnCls} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>
+                  {loading ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : '🚀 Create Account'}
+                </button>
                 <div className="relative my-1 text-center"><div className="absolute top-1/2 left-0 right-0 h-px bg-white/[.06]"/><span className="relative bg-[#161616] px-2.5 text-[0.7rem] text-gray-500">or</span></div>
-                <Btn onClick={handleGoogle} className="bg-white/[.04] border border-white/[.08] text-white hover:bg-white/[.07]">
-                  <span className="flex items-center justify-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>
-                    Sign up with Google
-                  </span>
-                </Btn>
+                <GoogleBtn label="Sign up with Google" />
               </div>
             </div>
           )}
@@ -151,9 +197,9 @@ export default function AuthPage() {
               <h2 className="font-[Montserrat] font-black text-[1rem] mb-2">One more step</h2>
               <p className="text-[0.8rem] text-gray-400 mb-5">Enter your invite code to join.</p>
               <div className="flex flex-col gap-3">
-                <Inp type="text" placeholder="Invite code" value={code} onChange={v=>setCode(v.toUpperCase())} className="tracking-widest"/>
-                <Btn onClick={handleGoogleWithCode} className="bg-[#E5181B] hover:bg-[#C01215] text-white">Continue →</Btn>
-                <Btn onClick={()=>setTab('signin')} className="bg-white/[.04] border border-white/[.08] text-white">← Back</Btn>
+                <input id="google-code" name="googlecode" type="text" placeholder="Invite code" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} className={`${inputCls} tracking-widest`}/>
+                <button type="button" onClick={handleGoogleWithCode} disabled={loading} className={`${btnCls} bg-[#E5181B] hover:bg-[#C01215] text-white`}>Continue →</button>
+                <button type="button" onClick={()=>setTab('signin')} className={`${btnCls} bg-white/[.04] border border-white/[.08] text-white`}>← Back</button>
               </div>
             </div>
           )}
@@ -165,9 +211,9 @@ export default function AuthPage() {
               <h2 className="font-[Montserrat] font-black text-[1rem] mb-2">Reset Password</h2>
               <p className="text-[0.8rem] text-gray-400 mb-5">Enter your email and we'll send a reset link.</p>
               <div className="flex flex-col gap-3">
-                <Inp type="email" placeholder="Email address" value={resetEm} onChange={setResetEm}/>
-                <Btn onClick={handleReset} className="bg-[#E5181B] hover:bg-[#C01215] text-white">Send Reset Link</Btn>
-                <Btn onClick={()=>setTab('signin')} className="bg-white/[.04] border border-white/[.08] text-white">← Back</Btn>
+                <input id="reset-email" name="resetemail" type="email" placeholder="Email address" value={resetEm} onChange={e=>setResetEm(e.target.value)} autoComplete="email" className={inputCls}/>
+                <button type="button" onClick={handleReset} disabled={loading} className={`${btnCls} bg-[#E5181B] hover:bg-[#C01215] text-white`}>Send Reset Link</button>
+                <button type="button" onClick={()=>setTab('signin')} className={`${btnCls} bg-white/[.04] border border-white/[.08] text-white`}>← Back</button>
               </div>
             </div>
           )}
@@ -180,9 +226,9 @@ export default function AuthPage() {
               <p className="text-[0.8rem] text-gray-400 leading-relaxed mb-4">We sent a verification link to <strong className="text-white">{email}</strong>. Click it to verify, then wait for admin approval.</p>
               <div className="bg-amber-900/20 border border-amber-500/25 rounded-[10px] p-4 text-left mb-4">
                 <div className="font-[Montserrat] text-[0.73rem] font-bold text-amber-300 mb-1">⏳ Pending Approval</div>
-                <p className="text-[0.71rem] text-amber-200/70 leading-relaxed">After verifying your email, the admin will review and approve your account. You'll be notified.</p>
+                <p className="text-[0.71rem] text-amber-200/70 leading-relaxed">After verifying your email, the admin will review and approve your account.</p>
               </div>
-              <Btn onClick={()=>setTab('signin')} className="bg-white/[.04] border border-white/[.08] text-white">Back to Sign In</Btn>
+              <button type="button" onClick={()=>setTab('signin')} className={`${btnCls} bg-white/[.04] border border-white/[.08] text-white`}>Back to Sign In</button>
             </div>
           )}
         </div>
