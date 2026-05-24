@@ -5,6 +5,8 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 
+// Security shield removed temporarily to fix typing issue
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -12,9 +14,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Toaster
         position="bottom-right"
         toastOptions={{
-          style:{ background:'#161616',color:'#fff',border:'1px solid rgba(255,255,255,0.07)',fontFamily:'Poppins,sans-serif',fontSize:'0.82rem' },
-          success:{ iconTheme:{ primary:'#22c55e',secondary:'#161616' } },
-          error:{ iconTheme:{ primary:'#E5181B',secondary:'#161616' } },
+          style:{
+            background:'#161616', color:'#fff',
+            border:'1px solid rgba(255,255,255,0.07)',
+            fontFamily:'Poppins,sans-serif', fontSize:'0.82rem'
+          },
+          success:{ iconTheme:{ primary:'#22c55e', secondary:'#161616' } },
+          error:{ iconTheme:{ primary:'#E5181B', secondary:'#161616' } },
         }}
       />
     </BrowserRouter>
