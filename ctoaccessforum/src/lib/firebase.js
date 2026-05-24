@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, enableNetwork } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,8 +11,14 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const app           = initializeApp(firebaseConfig)
-export const auth   = getAuth(app)
-export const db     = getFirestore(app)
+// Prevent duplicate initialization
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+
+export const auth           = getAuth(app)
+export const db             = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
+
+// Force network connection
+enableNetwork(db).catch(() => {})
+
 export default app
