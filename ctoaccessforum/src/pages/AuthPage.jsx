@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -6,21 +6,33 @@ export default function AuthPage() {
   const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth()
   const [tab,         setTab]         = useState('signin')
   const [loading,     setLoading]     = useState(false)
-  const [name,        setName]        = useState('')
-  const [email,       setEmail]       = useState('')
-  const [password,    setPassword]    = useState('')
-  const [code,        setCode]        = useState('')
-  const [resetEm,     setResetEm]     = useState('')
   const [showPass,    setShowPass]    = useState(false)
   const [showPass2,   setShowPass2]   = useState(false)
   const [attempts,    setAttempts]    = useState(0)
   const [lockedUntil, setLockedUntil] = useState(0)
 
+  // Use refs for input values to avoid re-renders on every keystroke
+  const nameRef    = useRef('')
+  const emailRef   = useRef('')
+  const passRef    = useRef('')
+  const codeRef    = useRef('')
+  const resetRef   = useRef('')
+
+  // Track display values for controlled inputs
+  const [nameVal,  setNameVal]  = useState('')
+  const [emailVal, setEmailVal] = useState('')
+  const [passVal,  setPassVal]  = useState('')
+  const [codeVal,  setCodeVal]  = useState('')
+  const [resetVal, setResetVal] = useState('')
+
+  const togglePass  = useCallback(() => setShowPass(v => !v),  [])
+  const togglePass2 = useCallback(() => setShowPass2(v => !v), [])
+
   async function handleSignIn() {
     if (Date.now() < lockedUntil) { toast.error(`Too many attempts. Try again in ${Math.ceil((lockedUntil-Date.now())/60000)} min.`); return }
-    if (!email || !password) { toast.error('Please fill in all fields'); return }
+    if (!emailVal || !passVal) { toast.error('Please fill in all fields'); return }
     setLoading(true)
-    try { await signIn(email, password) }
+    try { await signIn(emailVal, passVal) }
     catch(e) {
       const n = attempts + 1; setAttempts(n)
       if (n >= 5) { setLockedUntil(Date.now()+900000); setAttempts(0) }
@@ -30,10 +42,10 @@ export default function AuthPage() {
   }
 
   async function handleSignUp() {
-    if (!name||!email||!password||!code) { toast.error('All fields including invite code are required'); return }
-    if (password.length < 8) { toast.error('Password must be at least 8 characters'); return }
+    if (!nameVal||!emailVal||!passVal||!codeVal) { toast.error('All fields including invite code are required'); return }
+    if (passVal.length < 8) { toast.error('Password must be at least 8 characters'); return }
     setLoading(true)
-    try { await signUp(name.trim(), email.trim(), password, code.trim()); setTab('check-email') }
+    try { await signUp(nameVal.trim(), emailVal.trim(), passVal, codeVal.trim()); setTab('check-email') }
     catch(e) {
       const msgs = {'auth/email-already-in-use':'An account with this email already exists.'}
       toast.error(msgs[e.code] || e.message)
@@ -50,40 +62,28 @@ export default function AuthPage() {
   }
 
   async function handleGoogleWithCode() {
-    if (!code) { toast.error('Enter your invite code'); return }
+    if (!codeVal) { toast.error('Enter your invite code'); return }
     setLoading(true)
-    try { await signInWithGoogle(code.trim()) }
+    try { await signInWithGoogle(codeVal.trim()) }
     catch(e) { toast.error(e.message) }
     finally { setLoading(false) }
   }
 
   async function handleReset() {
-    if (!resetEm) { toast.error('Enter your email'); return }
+    if (!resetVal) { toast.error('Enter your email'); return }
     setLoading(true)
-    try { await resetPassword(resetEm); toast.success('Reset link sent!'); setTab('signin') }
+    try { await resetPassword(resetVal); toast.success('Reset link sent!'); setTab('signin') }
     catch(e) { toast.error(e.message) }
     finally { setLoading(false) }
   }
 
-  const ic = "w-full bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-all"
+  const ic = "w-full bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
   const bc = "w-full py-2.5 font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] transition-all disabled:opacity-50 cursor-pointer border-0"
 
-  const Eye = ({show}) => show ? (
+  const EyeIcon = ({show}) => show ? (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
   ) : (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-  )
-
-  const PwdInput = ({id, name, value, onChange, placeholder, autoComplete, show, toggle}) => (
-    <div className="relative">
-      <input id={id} name={name} type={show?'text':'password'} placeholder={placeholder}
-        value={value} onChange={onChange} autoComplete={autoComplete}
-        className={`${ic} pr-11`}/>
-      <button type="button" onClick={toggle} tabIndex={-1}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
-        <Eye show={show}/>
-      </button>
-    </div>
   )
 
   const GBtn = ({label='Continue with Google'}) => (
@@ -108,7 +108,7 @@ export default function AuthPage() {
     </div>
   )
 
-  const Spinner = () => <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+  const Spin = () => <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#080808] p-5">
@@ -125,14 +125,24 @@ export default function AuthPage() {
             <div className="animate-fadeIn">
               <TabBar active="signin"/>
               <div className="flex flex-col gap-4">
-                <input id="si-email" name="email" type="email" placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className={ic}/>
+                <input id="si-email" name="email" type="email" placeholder="Email address"
+                  defaultValue="" autoComplete="email" className={ic}
+                  onChange={e => setEmailVal(e.target.value)}/>
                 <div>
-                  <PwdInput id="si-pass" name="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" autoComplete="current-password" show={showPass} toggle={()=>setShowPass(!showPass)}/>
+                  <div className="relative">
+                    <input id="si-pass" name="password" type={showPass?'text':'password'}
+                      placeholder="Password" defaultValue="" autoComplete="current-password"
+                      className={`${ic} pr-11`}
+                      onChange={e => setPassVal(e.target.value)}/>
+                    <button type="button" onMouseDown={e=>e.preventDefault()} onClick={togglePass} tabIndex={-1}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors p-1">
+                      <EyeIcon show={showPass}/>
+                    </button>
+                  </div>
                   <button type="button" onClick={()=>setTab('reset')} className="text-[0.68rem] text-gray-500 hover:text-gray-300 mt-1.5 float-right">Forgot password?</button>
                 </div>
-                <button type="button" onClick={handleSignIn} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>{loading?<Spinner/>:'Sign In'}</button>
-                <Divider/>
-                <GBtn/>
+                <button type="button" onClick={handleSignIn} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>{loading?<Spin/>:'Sign In'}</button>
+                <Divider/><GBtn/>
               </div>
             </div>
           )}
@@ -141,16 +151,30 @@ export default function AuthPage() {
             <div className="animate-fadeIn">
               <TabBar active="signup"/>
               <div className="flex flex-col gap-3.5">
-                <input id="su-name" name="fullname" type="text" placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} autoComplete="name" className={ic}/>
-                <input id="su-email" name="email" type="email" placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className={ic}/>
-                <PwdInput id="su-pass" name="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password (min 8 characters)" autoComplete="new-password" show={showPass2} toggle={()=>setShowPass2(!showPass2)}/>
+                <input id="su-name" name="fullname" type="text" placeholder="Full name"
+                  defaultValue="" autoComplete="name" className={ic}
+                  onChange={e => setNameVal(e.target.value)}/>
+                <input id="su-email" name="email" type="email" placeholder="Email address"
+                  defaultValue="" autoComplete="email" className={ic}
+                  onChange={e => setEmailVal(e.target.value)}/>
+                <div className="relative">
+                  <input id="su-pass" name="password" type={showPass2?'text':'password'}
+                    placeholder="Password (min 8 characters)" defaultValue=""
+                    autoComplete="new-password" className={`${ic} pr-11`}
+                    onChange={e => setPassVal(e.target.value)}/>
+                  <button type="button" onMouseDown={e=>e.preventDefault()} onClick={togglePass2} tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors p-1">
+                    <EyeIcon show={showPass2}/>
+                  </button>
+                </div>
                 <div>
-                  <input id="su-code" name="invitecode" type="text" placeholder="Invite code e.g. CTOADMIN1" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} autoComplete="off" className={`${ic} tracking-widest`}/>
+                  <input id="su-code" name="invitecode" type="text" placeholder="Invite code e.g. CTOADMIN1"
+                    defaultValue="" autoComplete="off" className={`${ic} tracking-widest uppercase`}
+                    onChange={e => setCodeVal(e.target.value.toUpperCase())}/>
                   <p className="text-[0.67rem] text-gray-500 mt-1.5">Required to join — get your code from the admin.</p>
                 </div>
-                <button type="button" onClick={handleSignUp} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>{loading?<Spinner/>:'🚀 Create Account'}</button>
-                <Divider/>
-                <GBtn label="Sign up with Google"/>
+                <button type="button" onClick={handleSignUp} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white mt-1`}>{loading?<Spin/>:'🚀 Create Account'}</button>
+                <Divider/><GBtn label="Sign up with Google"/>
               </div>
             </div>
           )}
@@ -161,8 +185,10 @@ export default function AuthPage() {
               <h2 className="font-[Montserrat] font-black text-[1rem] mb-2">One more step</h2>
               <p className="text-[0.8rem] text-gray-400 mb-5">Enter your invite code to join.</p>
               <div className="flex flex-col gap-3">
-                <input id="gc-code" name="googlecode" type="text" placeholder="Invite code" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} className={`${ic} tracking-widest`}/>
-                <button type="button" onClick={handleGoogleWithCode} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white`}>{loading?<Spinner/>:'Continue →'}</button>
+                <input id="gc-code" name="googlecode" type="text" placeholder="Invite code"
+                  defaultValue="" className={`${ic} tracking-widest uppercase`}
+                  onChange={e => setCodeVal(e.target.value.toUpperCase())}/>
+                <button type="button" onClick={handleGoogleWithCode} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white`}>{loading?<Spin/>:'Continue →'}</button>
                 <button type="button" onClick={()=>setTab('signin')} className={`${bc} bg-white/[.04] border border-white/[.08] text-white`}>← Back</button>
               </div>
             </div>
@@ -174,8 +200,10 @@ export default function AuthPage() {
               <h2 className="font-[Montserrat] font-black text-[1rem] mb-2">Reset Password</h2>
               <p className="text-[0.8rem] text-gray-400 mb-5">Enter your email and we'll send a reset link.</p>
               <div className="flex flex-col gap-3">
-                <input id="re-email" name="resetemail" type="email" placeholder="Email address" value={resetEm} onChange={e=>setResetEm(e.target.value)} autoComplete="email" className={ic}/>
-                <button type="button" onClick={handleReset} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white`}>{loading?<Spinner/>:'Send Reset Link'}</button>
+                <input id="re-email" name="resetemail" type="email" placeholder="Email address"
+                  defaultValue="" autoComplete="email" className={ic}
+                  onChange={e => setResetVal(e.target.value)}/>
+                <button type="button" onClick={handleReset} disabled={loading} className={`${bc} bg-[#E5181B] hover:bg-[#C01215] text-white`}>{loading?<Spin/>:'Send Reset Link'}</button>
                 <button type="button" onClick={()=>setTab('signin')} className={`${bc} bg-white/[.04] border border-white/[.08] text-white`}>← Back</button>
               </div>
             </div>
@@ -185,7 +213,7 @@ export default function AuthPage() {
             <div className="animate-fadeIn text-center">
               <div className="text-5xl mb-4">📧</div>
               <h2 className="font-[Montserrat] font-black text-[1.05rem] mb-2">Check your email</h2>
-              <p className="text-[0.8rem] text-gray-400 leading-relaxed mb-4">We sent a verification link to <strong className="text-white">{email}</strong>. Click it to verify, then wait for admin approval.</p>
+              <p className="text-[0.8rem] text-gray-400 leading-relaxed mb-4">We sent a verification link to <strong className="text-white">{emailVal}</strong>. Click it to verify, then wait for admin approval.</p>
               <div className="bg-amber-900/20 border border-amber-500/25 rounded-[10px] p-4 text-left mb-4">
                 <div className="font-[Montserrat] text-[0.73rem] font-bold text-amber-300 mb-1">⏳ Pending Approval</div>
                 <p className="text-[0.71rem] text-amber-200/70 leading-relaxed">After verifying your email, the admin will review and approve your account.</p>
