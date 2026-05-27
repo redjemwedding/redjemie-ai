@@ -36,23 +36,39 @@ export function AuthProvider({ children }) {
     try {
       const ref  = doc(db, 'users', fu.uid)
       const snap = await getDoc(ref)
-      if (snap.exists()) return { id: fu.uid, ...snap.data() }
+      if (snap.exists()) {
+        // Patch missing createdAt on existing docs
+        const data = snap.data()
+        if (!data.createdAt) {
+          await updateDoc(ref, { createdAt: serverTimestamp() })
+        }
+        return { id: fu.uid, ...data }
+      }
       const isAdmin = fu.email === ADMIN_EMAIL
       const data = {
-        uid: fu.uid, email: fu.email,
+        uid: fu.uid,
+        email: fu.email,
         displayName: fu.displayName || fu.email.split('@')[0],
         photoURL: fu.photoURL || null,
         role:   isAdmin ? 'admin'    : 'member_free',
         plan:   'free',
         status: isAdmin ? 'approved' : 'pending_approval',
         xp: 0, streak: 0, posts: 0,
-        joinedAt: serverTimestamp(), bio: '', title: '', location: '',
+        enrolledCourses: [],
+        createdAt: serverTimestamp(),
+        bio: '', title: '', location: '',
       }
       await setDoc(ref, data)
       return { id: fu.uid, ...data }
     } catch(e) {
       console.error('fetchOrCreate error:', e)
-      return { id: fu.uid, email: fu.email, displayName: fu.displayName, role: fu.email === ADMIN_EMAIL ? 'admin' : 'member_free', status: fu.email === ADMIN_EMAIL ? 'approved' : 'pending_approval', plan: 'free', xp: 0, streak: 0, posts: 0 }
+      return {
+        id: fu.uid, email: fu.email,
+        displayName: fu.displayName,
+        role: fu.email === ADMIN_EMAIL ? 'admin' : 'member_free',
+        status: fu.email === ADMIN_EMAIL ? 'approved' : 'pending_approval',
+        plan: 'free', xp: 0, streak: 0, posts: 0, enrolledCourses: [],
+      }
     }
   }
 
@@ -83,7 +99,9 @@ export function AuthProvider({ children }) {
       status: isAdmin ? 'approved' : 'pending_approval',
       inviteCode: inviteCode.toUpperCase().trim(),
       xp: 0, streak: 0, posts: 0,
-      joinedAt: serverTimestamp(), bio: '', title: '', location: '',
+      enrolledCourses: [],
+      createdAt: serverTimestamp(),
+      bio: '', title: '', location: '',
     }
     await setDoc(doc(db, 'users', cred.user.uid), profileData)
     if (!isAdmin) {
@@ -118,7 +136,9 @@ export function AuthProvider({ children }) {
         status: isAdmin ? 'approved' : 'pending_approval',
         inviteCode: inviteCode.toUpperCase().trim(),
         xp: 0, streak: 0, posts: 0,
-        joinedAt: serverTimestamp(), bio: '', title: '', location: '',
+        enrolledCourses: [],
+        createdAt: serverTimestamp(),
+        bio: '', title: '', location: '',
       })
       if (!isAdmin) {
         await setDoc(doc(db, 'approvalQueue', cred.user.uid), {
@@ -135,6 +155,7 @@ export function AuthProvider({ children }) {
 
   async function signOut()            { await fbSignOut(auth); toast.success('Signed out') }
   async function resetPassword(email) { await sendPasswordResetEmail(auth, email) }
+
   async function refreshProfile() {
     if (!user) return
     const snap = await getDoc(doc(db, 'users', user.uid))
@@ -143,8 +164,14 @@ export function AuthProvider({ children }) {
 
   async function approveUser(uid, approved) {
     await Promise.all([
-      updateDoc(doc(db,'users',uid), { status: approved?'approved':'rejected', reviewedAt: serverTimestamp() }),
-      updateDoc(doc(db,'approvalQueue',uid), { status: approved?'approved':'rejected', reviewedAt: serverTimestamp() })
+      updateDoc(doc(db,'users',uid), {
+        status: approved ? 'approved' : 'rejected',
+        reviewedAt: serverTimestamp()
+      }),
+      updateDoc(doc(db,'approvalQueue',uid), {
+        status: approved ? 'approved' : 'rejected',
+        reviewedAt: serverTimestamp()
+      })
     ])
   }
 
