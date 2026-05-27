@@ -11,9 +11,9 @@ import toast from 'react-hot-toast'
 const ROLES = ['member_free', 'member_pro', 'instructor', 'admin']
 const ROLE_LABELS = {
   member_free: '👤 Member',
-  member_pro:  '⭐ Pro',
-  instructor:  '🎤 Instructor',
-  admin:       '⚙️ Admin',
+  member_pro:  'Pro',
+  instructor:  'Instructor',
+  admin:       'Admin',
 }
 const STATUS_META = {
   approved:         { label: 'Active',    cls: 'bg-green-900/30 text-green-300 border-green-500/25' },
