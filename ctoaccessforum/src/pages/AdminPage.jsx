@@ -246,7 +246,7 @@ export default function AdminPage() {
     <div className="max-w-screen-xl mx-auto">
       {confirm && <ConfirmModal msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
       <div className="flex items-center gap-3 mb-5">
-        <h1 className="font-[Montserrat] text-[1.35rem] font-black">⚙️ Admin Panel</h1>
+        <h1 className="font-[Montserrat] text-[1.35rem] font-black">Admin Panel</h1>
         <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-red-900/30 text-red-300 border border-red-500/25">Admin Only</span>
       </div>
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
