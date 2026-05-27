@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
 import { uploadFile } from '@/lib/cloudinary'
 import { timeAgo, strToColor, initials, CHANNELS, ROLE_META, parseVideoUrl, bytesToSize } from '@/lib/utils'
+import { notifyReply, notifyLike } from '@/lib/notifications'
 import toast from 'react-hot-toast'
 
 function Avatar({ name, uid, size = 8 }) {
@@ -51,16 +52,16 @@ function FileAttachment({ url, name }) {
 
 function VideoEmbed({ url }) {
   if (!url) return null
-  const e = parseVideoUrl(url)
-  if (!e) return null
+  const parsed = parseVideoUrl(url)
+  if (!parsed) return null
   return (
     <div className="video-wrap rounded-[10px] overflow-hidden">
-      <iframe src={e.src} allowFullScreen className="absolute inset-0 w-full h-full border-0" />
+      <iframe src={parsed.src} allowFullScreen className="absolute inset-0 w-full h-full border-0" />
     </div>
   )
 }
 
-function ReplyComposer({ postId, onPosted }) {
+function ReplyComposer({ postId, post, onPosted }) {
   const { profile } = useAuth()
   const [body,      setBody]      = useState('')
   const [videoUrl,  setVideoUrl]  = useState('')
@@ -68,7 +69,6 @@ function ReplyComposer({ postId, onPosted }) {
   const [posting,   setPosting]   = useState(false)
   const [progress,  setProgress]  = useState(0)
   const [showExtra, setShowExtra] = useState(false)
-  const textRef = useRef(null)
 
   async function submit() {
     if (!body.trim()) { toast.error('Reply cannot be empty'); return }
@@ -77,12 +77,16 @@ function ReplyComposer({ postId, onPosted }) {
       let fileUrl = null, fileName = null, fileSize = null
       if (file) {
         const res = await uploadFile(file, p => setProgress(p))
-        fileUrl = res.url; fileName = file.name; fileSize = res.bytes || file.size
+        fileUrl = res.url
+        fileName = file.name
+        fileSize = res.bytes || file.size
       }
       await addDoc(collection(db, 'posts', postId, 'replies'), {
         body:       body.trim(),
         videoUrl:   videoUrl || null,
-        fileUrl, fileName, fileSize,
+        fileUrl,
+        fileName,
+        fileSize,
         authorId:   profile.uid,
         authorName: profile.displayName,
         authorRole: profile.role,
@@ -91,10 +95,21 @@ function ReplyComposer({ postId, onPosted }) {
         createdAt:  serverTimestamp(),
       })
       await updateDoc(doc(db, 'posts', postId), { replies: increment(1) })
+
+      // notify post author if someone else replied
+      if (post?.authorId && post.authorId !== profile.uid) {
+        await notifyReply({
+          postAuthorUid: post.authorId,
+          replierName:   profile.displayName,
+          postTitle:     post.title,
+          postId,
+        })
+      }
+
       setBody(''); setVideoUrl(''); setFile(null); setProgress(0); setShowExtra(false)
       toast.success('Reply posted.')
       onPosted?.()
-    } catch (e) { toast.error(e.message) }
+    } catch (err) { toast.error(err.message) }
     finally { setPosting(false) }
   }
 
@@ -104,27 +119,23 @@ function ReplyComposer({ postId, onPosted }) {
         <Avatar name={profile?.displayName} uid={profile?.uid} size={8} />
         <div className="flex-1 min-w-0">
           <textarea
-            ref={textRef}
             value={body}
-            onChange={e => setBody(e.target.value)}
+            onChange={ev => setBody(ev.target.value)}
             placeholder="Write a reply…"
             rows={3}
             maxLength={5000}
             className="w-full bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3.5 py-2.5 text-white text-[0.8rem] outline-none font-[Poppins] placeholder-gray-600 resize-none focus:border-[rgba(229,24,27,.3)] transition-colors"
           />
 
-          {/* extra fields */}
           {showExtra && (
             <div className="flex flex-col gap-2.5 mt-2.5">
-              {/* video url */}
               <input
                 value={videoUrl}
-                onChange={e => setVideoUrl(e.target.value)}
+                onChange={ev => setVideoUrl(ev.target.value)}
                 placeholder="Video link — YouTube, Vimeo, Google Drive"
                 type="url"
                 className="w-full bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3.5 py-2 text-white text-[0.78rem] outline-none font-[Poppins] placeholder-gray-600"
               />
-              {/* file */}
               <div
                 onClick={() => document.getElementById('reply-file').click()}
                 className="border border-dashed border-white/[.08] rounded-[8px] px-4 py-3 cursor-pointer hover:border-red-500/25 transition-colors text-center">
@@ -132,7 +143,7 @@ function ReplyComposer({ postId, onPosted }) {
                   <div className="flex items-center gap-2 justify-center">
                     <span className="text-[0.7rem] font-medium text-white">{file.name}</span>
                     <span className="text-[0.65rem] text-gray-500">({bytesToSize(file.size)})</span>
-                    <button onClick={e => { e.stopPropagation(); setFile(null) }}
+                    <button onClick={ev => { ev.stopPropagation(); setFile(null) }}
                       className="text-gray-600 hover:text-red-400 text-xs ml-1">✕</button>
                   </div>
                 ) : (
@@ -146,7 +157,7 @@ function ReplyComposer({ postId, onPosted }) {
               </div>
               <input id="reply-file" type="file" className="hidden"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.pptx"
-                onChange={e => setFile(e.target.files[0] || null)} />
+                onChange={ev => setFile(ev.target.files[0] || null)} />
             </div>
           )}
 
@@ -195,25 +206,21 @@ function ReplyCard({ reply, postId, isAdmin, currentUid }) {
       await deleteDoc(doc(db, 'posts', postId, 'replies', reply.id))
       await updateDoc(doc(db, 'posts', postId), { replies: increment(-1) })
       toast.success('Reply deleted.')
-    } catch (e) { toast.error(e.message) }
+    } catch (err) { toast.error(err.message) }
   }
 
   return (
     <div className="flex gap-3 py-4 border-b border-white/[.04] last:border-0 group">
       <Avatar name={reply.authorName} uid={reply.authorId} size={8} />
       <div className="flex-1 min-w-0">
-        {/* author row */}
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           <span className="text-[0.8rem] font-semibold">{reply.authorName}</span>
           <RoleBadge role={reply.authorRole} />
           <span className="text-[0.65rem] text-gray-600">{timeAgo(reply.createdAt)}</span>
         </div>
-        {/* body */}
         <p className="text-[0.8rem] text-gray-300 leading-relaxed whitespace-pre-wrap mb-3">{reply.body}</p>
-        {/* attachments */}
         {reply.videoUrl && <div className="mb-3"><VideoEmbed url={reply.videoUrl} /></div>}
         {reply.fileUrl  && <div className="mb-3"><FileAttachment url={reply.fileUrl} name={reply.fileName} /></div>}
-        {/* actions */}
         <div className="flex items-center gap-4 text-[0.7rem] text-gray-600">
           <button onClick={toggleLike}
             className={`flex items-center gap-1.5 transition-colors ${liked ? 'text-[#FF4447]' : 'hover:text-gray-300'}`}>
@@ -233,13 +240,13 @@ function ReplyCard({ reply, postId, isAdmin, currentUid }) {
 }
 
 export default function PostPage() {
-  const { postId }              = useParams()
-  const nav                     = useNavigate()
-  const { profile, isAdmin }    = useAuth()
-  const [post,    setPost]      = useState(null)
-  const [replies, setReplies]   = useState([])
-  const [loading, setLoading]   = useState(true)
-  const repliesEndRef           = useRef(null)
+  const { postId }           = useParams()
+  const nav                  = useNavigate()
+  const { profile, isAdmin } = useAuth()
+  const [post,    setPost]   = useState(null)
+  const [replies, setReplies]= useState([])
+  const [loading, setLoading]= useState(true)
+  const repliesEndRef        = useRef(null)
 
   // fetch post
   useEffect(() => {
@@ -261,7 +268,7 @@ export default function PostPage() {
     return onSnapshot(q, s => setReplies(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => {})
   }, [postId])
 
-  // like post toggle
+  // like post toggle — with notification
   async function togglePostLike() {
     if (!profile?.uid || !post) return
     const liked = post.likedBy?.includes(profile.uid)
@@ -272,6 +279,17 @@ export default function PostPage() {
         ? (post.likedBy || []).filter(id => id !== profile.uid)
         : [...(post.likedBy || []), profile.uid],
     })
+
+    // notify post author on new like (not on unlike, not self-like)
+    if (!liked && post.authorId && post.authorId !== profile.uid) {
+      await notifyLike({
+        postAuthorUid: post.authorId,
+        likerName:     profile.displayName,
+        postTitle:     post.title,
+        postId,
+      })
+    }
+
     setPost(p => ({
       ...p,
       likes:   (p.likes || 0) + (liked ? -1 : 1),
@@ -281,7 +299,6 @@ export default function PostPage() {
     }))
   }
 
-  // pin toggle (admin only)
   async function togglePin() {
     if (!isAdmin || !post) return
     await updateDoc(doc(db, 'posts', postId), { pinned: !post.pinned })
@@ -289,14 +306,13 @@ export default function PostPage() {
     toast.success(post.pinned ? 'Post unpinned.' : 'Post pinned.')
   }
 
-  // delete post
   async function deletePost() {
     if (!confirm('Delete this post and all replies?')) return
     try {
       await deleteDoc(doc(db, 'posts', postId))
       toast.success('Post deleted.')
       nav('/forum')
-    } catch (e) { toast.error(e.message) }
+    } catch (err) { toast.error(err.message) }
   }
 
   if (loading) return (
@@ -307,9 +323,9 @@ export default function PostPage() {
 
   if (!post) return null
 
-  const channel    = CHANNELS.find(c => c.id === post.channel)
-  const postLiked  = post.likedBy?.includes(profile?.uid)
-  const canDelete  = isAdmin || post.authorId === profile?.uid
+  const channel   = CHANNELS.find(c => c.id === post.channel)
+  const postLiked = post.likedBy?.includes(profile?.uid)
+  const canDelete = isAdmin || post.authorId === profile?.uid
 
   return (
     <div className="max-w-screen-md mx-auto">
@@ -321,7 +337,7 @@ export default function PostPage() {
 
       {/* post card */}
       <div className="bg-[#111] border border-white/[.06] rounded-[14px] p-6 mb-4">
-        {/* meta row */}
+        {/* meta */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           {channel && (
             <span className="text-[0.62rem] font-bold font-[Montserrat] px-2 py-0.5 rounded bg-[rgba(229,24,27,.08)] text-[#FF4447] border border-red-500/15">
@@ -396,12 +412,11 @@ export default function PostPage() {
         </div>
       </div>
 
-      {/* replies section */}
+      {/* replies */}
       <div className="mb-4">
         <h2 className="font-[Montserrat] text-[0.72rem] font-bold tracking-[.1em] uppercase text-gray-500 mb-3">
           {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
         </h2>
-
         {replies.length === 0 ? (
           <div className="bg-[#111] border border-white/[.05] rounded-[12px] px-6 py-8 text-center text-[0.8rem] text-gray-600">
             No replies yet. Be the first to respond.
@@ -425,6 +440,7 @@ export default function PostPage() {
       {/* reply composer */}
       <ReplyComposer
         postId={postId}
+        post={post}
         onPosted={() => repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
       />
     </div>
