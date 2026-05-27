@@ -114,7 +114,7 @@ function UserRow({ u, courses, onAction }) {
                   className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-red-900/30 text-red-300 border border-red-500/25">🚫 Ban</button>
               )}
               <button onClick={() => onAction('resetXP', u)}
-                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-purple-900/30 text-purple-300 border border-purple-500/25">🔄 Reset XP</button>
+                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-purple-900/30 text-purple-300 border border-purple-500/25">Reset XP</button>
               <button onClick={() => onAction('resetStreak', u)}
                 className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-blue-900/30 text-blue-300 border border-blue-500/25">🔥 Reset Streak</button>
               <EnrollDropdown u={u} courses={courses} onEnroll={cid => onAction('enroll', u, cid)} />
@@ -227,19 +227,19 @@ export default function AdminPage() {
   }
 
   const stats = [
-    { l: 'Total Users',      v: users.length,                                                         c: 'text-blue-400',   i: '👥' },
-    { l: 'Active',           v: users.filter(u => !['suspended','banned'].includes(u.status)).length, c: 'text-green-400',  i: '✅' },
-    { l: 'Suspended/Banned', v: users.filter(u => ['suspended','banned'].includes(u.status)).length,  c: 'text-red-400',    i: '🚫' },
-    { l: 'Pending Queue',    v: queue.filter(u => u.status === 'pending').length,                     c: 'text-amber-400',  i: '⏳' },
-    { l: 'Instructor Apps',  v: apps.filter(a => a.status === 'pending').length,                      c: 'text-purple-400', i: '🎤' },
-    { l: 'Invite Codes',     v: codes.filter(c => !c.used).length,                                    c: 'text-cyan-400',   i: '🔑' },
+    { l: 'Total Users',      v: users.length,                                                         c: 'text-blue-400',   i: ' ' },
+    { l: 'Active',           v: users.filter(u => !['suspended','banned'].includes(u.status)).length, c: 'text-green-400',  i: ' ' },
+    { l: 'Suspended/Banned', v: users.filter(u => ['suspended','banned'].includes(u.status)).length,  c: 'text-red-400',    i: ' ' },
+    { l: 'Pending Queue',    v: queue.filter(u => u.status === 'pending').length,                     c: 'text-amber-400',  i: ' ' },
+    { l: 'Instructor Apps',  v: apps.filter(a => a.status === 'pending').length,                      c: 'text-purple-400', i: ' ' },
+    { l: 'Invite Codes',     v: codes.filter(c => !c.used).length,                                    c: 'text-cyan-400',   i: ' ' },
   ]
 
   const TABS = [
-    { id: 'users', label: '👥 Users',          count: users.length },
-    { id: 'queue', label: '⏳ Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
-    { id: 'apps',  label: '🎤 Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
-    { id: 'codes', label: '🔑 Invite Codes',    count: codes.filter(c => !c.used).length },
+    { id: 'users', label: ' Users',          count: users.length },
+    { id: 'queue', label: ' Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
+    { id: 'apps',  label: ' Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
+    { id: 'codes', label: ' Invite Codes',    count: codes.filter(c => !c.used).length },
   ]
 
   return (
