@@ -62,15 +62,15 @@ export function DashboardPage() {
           <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
             <div className="flex items-center justify-between mb-4">
               <span className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500">Recent Activity</span>
-              <button onClick={() => nav('forum')} className="text-[0.7rem] text-[#FF4447] font-[Montserrat] font-bold hover:underline">View Forum</button>
+              <button onClick={() => nav('/forum')} className="text-[0.7rem] text-[#FF4447] font-[Montserrat] font-bold hover:underline">View Forum</button>
             </div>
             {posts.length === 0 ? (
               <div className="text-[0.8rem] text-gray-500 py-4 text-center">
-                No posts yet. <button onClick={() => nav('forum')} className="text-[#FF4447] hover:underline">Be the first.</button>
+                No posts yet. <button onClick={() => nav('/forum')} className="text-[#FF4447] hover:underline">Be the first.</button>
               </div>
             ) : posts.map(p => (
               <div key={p.id}
-                onClick={() => nav(`forum/post/${p.id}`)}
+                onClick={() => nav(`/forum/post/${p.id}`)}
                 className="flex gap-3 py-3 border-b border-white/[.05] last:border-0 first:pt-0 cursor-pointer hover:bg-white/[.02] -mx-2 px-2 rounded transition-colors">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.6rem] flex-shrink-0"
                   style={{ background: strToColor(p.authorId || '') }}>
@@ -95,7 +95,7 @@ export function DashboardPage() {
             <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
               <div className="font-[Montserrat] text-[0.88rem] font-bold mb-1">Teach on the Platform</div>
               <div className="text-[0.76rem] text-gray-400 leading-relaxed mb-3">Apply to become an instructor — reviewed within 3–5 business days.</div>
-              <button onClick={() => nav('profile')} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
+              <button onClick={() => nav('/profile?apply=1')} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
                 Apply as Instructor
               </button>
             </div>
@@ -193,7 +193,7 @@ export function ForumPage() {
       setForm({ channel: 'all', title: '', body: '', videoUrl: '', tags: '' })
       setFile(null); setUpPct(0)
       toast.success('Post published.')
-      nav(`forum/post/${postRef.id}`)
+      nav(`/forum/post/${postRef.id}`)
     } catch (err) { toast.error(err.message) }
     finally { setPosting(false) }
   }
@@ -271,7 +271,7 @@ export function ForumPage() {
                 </div>
               </div>
 
-              <div onClick={() => nav(`forum/post/${p.id}`)}
+              <div onClick={() => nav(`/forum/post/${p.id}`)}
                 className="font-[Montserrat] text-[0.9rem] font-bold mb-1.5 cursor-pointer hover:text-[#FF4447] transition-colors leading-snug">
                 {p.title}
               </div>
@@ -303,7 +303,7 @@ export function ForumPage() {
                   className={`flex items-center gap-1.5 transition-colors ${p.likedBy?.includes(profile?.uid) ? 'text-[#FF4447]' : 'hover:text-gray-300'}`}>
                   {p.likedBy?.includes(profile?.uid) ? '♥' : '♡'} {p.likes || 0}
                 </button>
-                <button onClick={() => nav(`forum/post/${p.id}`)}
+                <button onClick={() => nav(`/forum/post/${p.id}`)}
                   className="flex items-center gap-1.5 hover:text-gray-300 transition-colors">
                   Reply ({p.replies || 0})
                 </button>
@@ -416,7 +416,7 @@ export function CoursesPage() {
   async function handleEnroll(course) {
     if (!profile?.uid) return
     const enrolled = profile?.enrolledCourses?.includes(course.id)
-    if (enrolled) { nav(`courses/${course.id}`); return }
+    if (enrolled) { nav(`/courses/${course.id}`); return }
     try {
       await updateDoc(doc(db, 'users', profile.uid), {
         enrolledCourses: arrayUnion(course.id),
@@ -509,7 +509,7 @@ export function ProfilePage() {
   const { profile, isInstructor, refreshProfile } = useAuth()
   const [editing, setEditing] = useState(false)
   const [saving,  setSaving]  = useState(false)
-  const [applying, setApplying] = useState(false)
+  const [applying, setApplying] = useState(() => new URLSearchParams(window.location.search).get("apply") === "1")
   const [appForm, setAppForm] = useState({ topic: '', bio: '' })
   const [form, setForm] = useState({
     displayName: profile?.displayName || '',
