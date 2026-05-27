@@ -5,7 +5,7 @@ import {
   signOut as fbSignOut, sendEmailVerification,
   sendPasswordResetEmail, updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'
 import { auth, db, googleProvider } from '@/lib/firebase'
 import toast from 'react-hot-toast'
 
@@ -22,94 +22,118 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async fu => {
       if (fu) {
         setUser(fu)
-        const p = await fetchOrCreate(fu)
-        setProfile(p)
+        await fetchOrCreate(fu)
       } else {
-        setUser(null); setProfile(null)
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
     return unsub
   }, [])
+
+  // live profile listener — picks up plan/role changes immediately
+  useEffect(() => {
+    if (!user?.uid) return
+    const ref = doc(db, 'users', user.uid)
+    const unsub = onSnapshot(ref, snap => {
+      if (snap.exists()) {
+        setProfile({ id: user.uid, ...snap.data() })
+      }
+      setLoading(false)
+    }, () => setLoading(false))
+    return unsub
+  }, [user?.uid])
 
   async function fetchOrCreate(fu) {
     try {
       const ref  = doc(db, 'users', fu.uid)
       const snap = await getDoc(ref)
       if (snap.exists()) {
-        // Patch missing createdAt on existing docs
         const data = snap.data()
         if (!data.createdAt) {
           await updateDoc(ref, { createdAt: serverTimestamp() })
         }
-        return { id: fu.uid, ...data }
+        setProfile({ id: fu.uid, ...data })
+        setLoading(false)
+        return
       }
       const isAdmin = fu.email === ADMIN_EMAIL
       const data = {
-        uid: fu.uid,
-        email: fu.email,
-        displayName: fu.displayName || fu.email.split('@')[0],
-        photoURL: fu.photoURL || null,
-        role:   isAdmin ? 'admin'    : 'member_free',
-        plan:   'free',
-        status: isAdmin ? 'approved' : 'pending_approval',
-        xp: 0, streak: 0, posts: 0,
+        uid:             fu.uid,
+        email:           fu.email,
+        displayName:     fu.displayName || fu.email.split('@')[0],
+        photoURL:        fu.photoURL || null,
+        role:            isAdmin ? 'admin' : 'member_free',
+        plan:            'free',
+        status:          isAdmin ? 'approved' : 'pending_approval',
+        xp:              0,
+        streak:          0,
+        posts:           0,
         enrolledCourses: [],
-        createdAt: serverTimestamp(),
-        bio: '', title: '', location: '',
+        createdAt:       serverTimestamp(),
+        bio:             '',
+        title:           '',
+        location:        '',
       }
       await setDoc(ref, data)
-      return { id: fu.uid, ...data }
-    } catch(e) {
-      console.error('fetchOrCreate error:', e)
-      return {
-        id: fu.uid, email: fu.email,
-        displayName: fu.displayName,
-        role: fu.email === ADMIN_EMAIL ? 'admin' : 'member_free',
-        status: fu.email === ADMIN_EMAIL ? 'approved' : 'pending_approval',
-        plan: 'free', xp: 0, streak: 0, posts: 0, enrolledCourses: [],
-      }
+      setProfile({ id: fu.uid, ...data })
+      setLoading(false)
+    } catch (err) {
+      console.error('fetchOrCreate error:', err)
+      setLoading(false)
     }
   }
 
   async function validateCode(code) {
-    const { doc: d, getDoc: g } = await import('firebase/firestore')
-    const ref  = d(db, 'inviteCodes', code.toUpperCase().trim())
-    const snap = await g(ref)
+    const ref  = doc(db, 'inviteCodes', code.toUpperCase().trim())
+    const snap = await getDoc(ref)
     if (!snap.exists())   throw new Error('Invalid invite code.')
     if (snap.data().used) throw new Error('This invite code has already been used.')
     return snap.data()
   }
 
   async function consumeCode(code) {
-    const { doc: d, updateDoc: u, serverTimestamp: s } = await import('firebase/firestore')
-    await u(d(db, 'inviteCodes', code.toUpperCase().trim()), { used: true, usedAt: s() })
+    await updateDoc(doc(db, 'inviteCodes', code.toUpperCase().trim()), {
+      used:   true,
+      usedAt: serverTimestamp(),
+    })
   }
 
   async function signUp(name, email, password, inviteCode) {
     const codeData = await validateCode(inviteCode)
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    const cred     = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
     await sendEmailVerification(cred.user)
     const isAdmin = email === ADMIN_EMAIL
     const profileData = {
-      uid: cred.user.uid, email, displayName: name, photoURL: null,
-      role:   isAdmin ? 'admin' : 'member_free',
-      plan:   codeData.plan || 'free',
-      status: isAdmin ? 'approved' : 'pending_approval',
-      inviteCode: inviteCode.toUpperCase().trim(),
-      xp: 0, streak: 0, posts: 0,
+      uid:             cred.user.uid,
+      email,
+      displayName:     name,
+      photoURL:        null,
+      role:            isAdmin ? 'admin' : 'member_free',
+      plan:            codeData.plan || 'free',
+      status:          isAdmin ? 'approved' : 'pending_approval',
+      inviteCode:      inviteCode.toUpperCase().trim(),
+      xp:              0,
+      streak:          0,
+      posts:           0,
       enrolledCourses: [],
-      createdAt: serverTimestamp(),
-      bio: '', title: '', location: '',
+      createdAt:       serverTimestamp(),
+      bio:             '',
+      title:           '',
+      location:        '',
     }
     await setDoc(doc(db, 'users', cred.user.uid), profileData)
     if (!isAdmin) {
       await setDoc(doc(db, 'approvalQueue', cred.user.uid), {
-        uid: cred.user.uid, name, email,
+        uid:        cred.user.uid,
+        name,
+        email,
         inviteCode: inviteCode.toUpperCase().trim(),
-        plan: codeData.plan || 'free',
-        submittedAt: serverTimestamp(), status: 'pending',
+        plan:       codeData.plan || 'free',
+        submittedAt: serverTimestamp(),
+        status:     'pending',
       })
     }
     await consumeCode(inviteCode)
@@ -128,24 +152,31 @@ export function AuthProvider({ children }) {
       const codeData = await validateCode(inviteCode)
       const isAdmin  = cred.user.email === ADMIN_EMAIL
       await setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid, email: cred.user.email,
-        displayName: cred.user.displayName,
-        photoURL: cred.user.photoURL || null,
-        role: isAdmin ? 'admin' : 'member_free',
-        plan: codeData.plan || 'free',
-        status: isAdmin ? 'approved' : 'pending_approval',
-        inviteCode: inviteCode.toUpperCase().trim(),
-        xp: 0, streak: 0, posts: 0,
+        uid:             cred.user.uid,
+        email:           cred.user.email,
+        displayName:     cred.user.displayName,
+        photoURL:        cred.user.photoURL || null,
+        role:            isAdmin ? 'admin' : 'member_free',
+        plan:            codeData.plan || 'free',
+        status:          isAdmin ? 'approved' : 'pending_approval',
+        inviteCode:      inviteCode.toUpperCase().trim(),
+        xp:              0,
+        streak:          0,
+        posts:           0,
         enrolledCourses: [],
-        createdAt: serverTimestamp(),
-        bio: '', title: '', location: '',
+        createdAt:       serverTimestamp(),
+        bio:             '',
+        title:           '',
+        location:        '',
       })
       if (!isAdmin) {
         await setDoc(doc(db, 'approvalQueue', cred.user.uid), {
-          uid: cred.user.uid, name: cred.user.displayName,
-          email: cred.user.email,
-          inviteCode: inviteCode.toUpperCase().trim(),
-          submittedAt: serverTimestamp(), status: 'pending',
+          uid:         cred.user.uid,
+          name:        cred.user.displayName,
+          email:       cred.user.email,
+          inviteCode:  inviteCode.toUpperCase().trim(),
+          submittedAt: serverTimestamp(),
+          status:      'pending',
         })
       }
       await consumeCode(inviteCode)
@@ -153,31 +184,49 @@ export function AuthProvider({ children }) {
     return cred
   }
 
-  async function signOut()            { await fbSignOut(auth); toast.success('Signed out') }
-  async function resetPassword(email) { await sendPasswordResetEmail(auth, email) }
+  async function signOut() {
+    await fbSignOut(auth)
+    toast.success('Signed out')
+  }
+
+  async function resetPassword(email) {
+    await sendPasswordResetEmail(auth, email)
+  }
 
   async function refreshProfile() {
-    if (!user) return
+    if (!user?.uid) return
     const snap = await getDoc(doc(db, 'users', user.uid))
     if (snap.exists()) setProfile({ id: user.uid, ...snap.data() })
   }
 
   async function approveUser(uid, approved) {
     await Promise.all([
-      updateDoc(doc(db,'users',uid), {
-        status: approved ? 'approved' : 'rejected',
-        reviewedAt: serverTimestamp()
+      updateDoc(doc(db, 'users', uid), {
+        status:     approved ? 'approved' : 'rejected',
+        reviewedAt: serverTimestamp(),
       }),
-      updateDoc(doc(db,'approvalQueue',uid), {
-        status: approved ? 'approved' : 'rejected',
-        reviewedAt: serverTimestamp()
-      })
+      updateDoc(doc(db, 'approvalQueue', uid), {
+        status:     approved ? 'approved' : 'rejected',
+        reviewedAt: serverTimestamp(),
+      }),
     ])
+    if (approved) {
+      try {
+        const { notify } = await import('@/lib/notifications')
+        const snap = await getDoc(doc(db, 'users', uid))
+        const name = snap.data()?.displayName || 'there'
+        await notify(uid, {
+          type:    'approved',
+          message: `Welcome ${name}! Your account has been approved.`,
+          link:    '/dashboard',
+        })
+      } catch (_) {}
+    }
   }
 
   const isAdmin      = profile?.role === 'admin'
-  const isInstructor = ['admin','instructor'].includes(profile?.role)
-  const isPro        = ['pro','team'].includes(profile?.plan) || isInstructor
+  const isInstructor = ['admin', 'instructor'].includes(profile?.role)
+  const isPro        = ['pro', 'team'].includes(profile?.plan) || isInstructor
   const isApproved   = profile?.status === 'approved' || isAdmin
   const isVerified   = user?.emailVerified || user?.providerData?.[0]?.providerId === 'google.com'
 
