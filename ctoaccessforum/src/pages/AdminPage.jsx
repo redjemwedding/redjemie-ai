@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   collection, query, orderBy, onSnapshot,
-  updateDoc, deleteDoc, doc, addDoc, serverTimestamp
+  updateDoc, deleteDoc, doc, setDoc, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 
 const ROLES = ['member_free', 'member_pro', 'instructor', 'admin']
 const ROLE_LABELS = {
-  member_free: '👤 Member',
+  member_free: 'Member',
   member_pro:  'Pro',
   instructor:  'Instructor',
   admin:       'Admin',
@@ -22,6 +22,7 @@ const STATUS_META = {
   suspended:        { label: 'Suspended', cls: 'bg-red-900/30 text-red-300 border-red-500/25' },
   banned:           { label: 'Banned',    cls: 'bg-red-900/50 text-red-200 border-red-400/40' },
 }
+const PLAN_OPTIONS = ['free', 'pro']
 
 function ConfirmModal({ msg, onConfirm, onCancel }) {
   return (
@@ -29,8 +30,14 @@ function ConfirmModal({ msg, onConfirm, onCancel }) {
       <div className="bg-[#1a1a1a] border border-white/[.08] rounded-[16px] p-6 w-full max-w-sm">
         <div className="text-[0.95rem] font-semibold mb-5 leading-snug">{msg}</div>
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2 bg-white/[.04] border border-white/[.08] text-white font-bold font-[Montserrat] text-[0.78rem] rounded-[9px]">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white font-bold font-[Montserrat] text-[0.78rem] rounded-[9px]">Confirm</button>
+          <button onClick={onCancel}
+            className="flex-1 py-2 bg-white/[.04] border border-white/[.08] text-white font-bold font-[Montserrat] text-[0.78rem] rounded-[9px]">
+            Cancel
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white font-bold font-[Montserrat] text-[0.78rem] rounded-[9px]">
+            Confirm
+          </button>
         </div>
       </div>
     </div>
@@ -42,7 +49,7 @@ function EnrollDropdown({ u, courses, onEnroll }) {
   if (!courses.length) return null
   return (
     <div className="flex items-center gap-1.5">
-      <select value={val} onChange={e => setVal(e.target.value)}
+      <select value={val} onChange={ev => setVal(ev.target.value)}
         className="bg-[#1E1E1E] border border-white/[.06] rounded-[7px] px-2 py-1.5 text-white text-[0.68rem] outline-none font-[Poppins]">
         <option value="">Enroll in course…</option>
         {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -50,7 +57,7 @@ function EnrollDropdown({ u, courses, onEnroll }) {
       {val && (
         <button onClick={() => { onEnroll(val); setVal('') }}
           className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1.5 rounded-[6px] bg-[rgba(229,24,27,.1)] border border-red-500/20 text-[#FF4447]">
-          + Enroll
+          Enroll
         </button>
       )}
     </div>
@@ -77,13 +84,15 @@ function UserRow({ u, courses, onAction }) {
           </div>
         </td>
         <td className="py-3 px-4">
-          <select value={u.role || 'member_free'} onChange={e => onAction('role', u, e.target.value)}
+          <select value={u.role || 'member_free'} onChange={ev => onAction('role', u, ev.target.value)}
             className="bg-[#1E1E1E] border border-white/[.06] rounded-[7px] px-2 py-1.5 text-white text-[0.72rem] outline-none font-[Poppins] cursor-pointer">
             {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
           </select>
         </td>
         <td className="py-3 px-4">
-          <span className={`text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full border ${sm.cls}`}>{sm.label}</span>
+          <span className={`text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full border ${sm.cls}`}>
+            {sm.label}
+          </span>
         </td>
         <td className="py-3 px-4 text-center">
           <span className="font-[Montserrat] text-[0.78rem] font-bold text-[#FF4447]">{(u.xp || 0).toLocaleString()}</span>
@@ -93,33 +102,45 @@ function UserRow({ u, courses, onAction }) {
         <td className="py-3 px-4">
           <button onClick={() => setOpen(o => !o)}
             className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-white/[.04] border border-white/[.06] hover:border-red-500/20 hover:text-[#FF4447] transition-all">
-            Actions ▾
+            Actions
           </button>
         </td>
       </tr>
       {open && (
-        <tr className="bg-[#111]">
+        <tr className="bg-[#0d0d0d]">
           <td colSpan={7} className="px-4 py-3">
             <div className="flex flex-wrap gap-2 items-center">
               {status !== 'approved' && (
                 <button onClick={() => onAction('status', u, 'approved')}
-                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-green-900/30 text-green-300 border border-green-500/25">✅ Reactivate</button>
+                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-green-900/30 text-green-300 border border-green-500/25">
+                  Reactivate
+                </button>
               )}
               {status !== 'suspended' && (
                 <button onClick={() => onAction('status', u, 'suspended')}
-                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-amber-900/30 text-amber-300 border border-amber-500/25">⏸ Suspend</button>
+                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-amber-900/30 text-amber-300 border border-amber-500/25">
+                  Suspend
+                </button>
               )}
               {status !== 'banned' && (
                 <button onClick={() => onAction('status', u, 'banned')}
-                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-red-900/30 text-red-300 border border-red-500/25">🚫 Ban</button>
+                  className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-red-900/30 text-red-300 border border-red-500/25">
+                  Ban
+                </button>
               )}
               <button onClick={() => onAction('resetXP', u)}
-                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-purple-900/30 text-purple-300 border border-purple-500/25">Reset XP</button>
+                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-purple-900/30 text-purple-300 border border-purple-500/25">
+                Reset XP
+              </button>
               <button onClick={() => onAction('resetStreak', u)}
-                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-blue-900/30 text-blue-300 border border-blue-500/25">🔥 Reset Streak</button>
+                className="text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-blue-900/30 text-blue-300 border border-blue-500/25">
+                Reset Streak
+              </button>
               <EnrollDropdown u={u} courses={courses} onEnroll={cid => onAction('enroll', u, cid)} />
               <button onClick={() => onAction('delete', u)}
-                className="ml-auto text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-red-900/40 text-red-200 border border-red-400/30">🗑 Delete Account</button>
+                className="ml-auto text-[0.68rem] font-bold font-[Montserrat] px-3 py-1.5 rounded-[6px] bg-red-900/40 text-red-200 border border-red-400/30">
+                Delete Account
+              </button>
             </div>
           </td>
         </tr>
@@ -137,6 +158,7 @@ export default function AdminPage() {
   const [courses,      setCourses]      = useState([])
   const [codes,        setCodes]        = useState([])
   const [genCount,     setGenCount]     = useState(1)
+  const [genPlan,      setGenPlan]      = useState('free')
   const [search,       setSearch]       = useState('')
   const [roleFilter,   setRoleFilter]   = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -147,7 +169,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isAdmin) return
     const unsubs = [
-      // No orderBy on users — avoids missing field errors
       onSnapshot(collection(db, 'users'),
         s => { setUsers(s.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false) },
         () => setLoading(false)),
@@ -157,19 +178,25 @@ export default function AdminPage() {
         s => setApps(s.docs.map(d => ({ id: d.id, ...d.data() })))),
       onSnapshot(collection(db, 'courses'),
         s => setCourses(s.docs.map(d => ({ id: d.id, ...d.data() })))),
+      // ── codes: order client-side to avoid index requirement ──
       onSnapshot(collection(db, 'inviteCodes'),
-        s => setCodes(s.docs.map(d => ({ id: d.id, ...d.data() })))),
+        s => {
+          const all = s.docs.map(d => ({ id: d.id, ...d.data() }))
+          all.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+          setCodes(all)
+        }),
     ]
     return () => unsubs.forEach(u => u())
   }, [isAdmin])
 
   if (!isAdmin) return (
-    <div className="flex items-center justify-center min-h-[50vh] text-gray-500">🔒 Admin access only.</div>
+    <div className="flex items-center justify-center min-h-[50vh] text-gray-500 text-[0.85rem]">
+      Admin access only.
+    </div>
   )
 
-  // Sort client-side by xp
-  const sortedUsers = [...users].sort((a, b) => (b.xp || 0) - (a.xp || 0))
-  const filteredUsers = sortedUsers.filter(u => {
+  const sortedUsers    = [...users].sort((a, b) => (b.xp || 0) - (a.xp || 0))
+  const filteredUsers  = sortedUsers.filter(u => {
     const matchSearch = !search || `${u.displayName || ''} ${u.email || ''}`.toLowerCase().includes(search.toLowerCase())
     const matchRole   = roleFilter === 'all' || u.role === roleFilter
     const matchStatus = statusFilter === 'all' || (u.status || 'approved') === statusFilter
@@ -182,18 +209,20 @@ export default function AdminPage() {
     const run = async () => {
       setActing(a => ({ ...a, [uid]: true }))
       try {
-        if (type === 'role')        { await updateDoc(ref, { role: value }); toast.success(`Role → ${ROLE_LABELS[value]}`) }
+        if (type === 'role')        { await updateDoc(ref, { role: value }); toast.success(`Role updated to ${ROLE_LABELS[value]}`) }
         if (type === 'status')      { await updateDoc(ref, { status: value }); toast.success(`User ${value}`) }
-        if (type === 'resetXP')     { await updateDoc(ref, { xp: 0 }); toast.success('XP reset to 0') }
+        if (type === 'resetXP')     { await updateDoc(ref, { xp: 0 }); toast.success('XP reset') }
         if (type === 'resetStreak') { await updateDoc(ref, { streak: 0 }); toast.success('Streak reset') }
-        if (type === 'enroll')      { await updateDoc(ref, { enrolledCourses: [...(u.enrolledCourses || []), value] }); toast.success('Enrolled!') }
+        if (type === 'enroll')      { await updateDoc(ref, { enrolledCourses: [...(u.enrolledCourses || []), value] }); toast.success('Enrolled') }
         if (type === 'delete')      { await deleteDoc(ref); toast.success('User deleted') }
-      } catch (e) { toast.error(e.message) }
+      } catch (err) { toast.error(err.message) }
       finally { setActing(a => ({ ...a, [uid]: false })) }
     }
     if (type === 'delete' || type === 'resetXP') {
       setConfirm({
-        msg: type === 'delete' ? `Permanently delete ${u.displayName}? This cannot be undone.` : `Reset ${u.displayName}'s XP to 0?`,
+        msg: type === 'delete'
+          ? `Permanently delete ${u.displayName}? This cannot be undone.`
+          : `Reset ${u.displayName}'s XP to 0?`,
         onConfirm: async () => { setConfirm(null); await run() }
       })
     } else { await run() }
@@ -201,8 +230,8 @@ export default function AdminPage() {
 
   async function handleApprove(uid, approve) {
     setActing(a => ({ ...a, [uid]: true }))
-    try { await approveUser(uid, approve); toast.success(approve ? '✅ Approved!' : 'Rejected.') }
-    catch (e) { toast.error(e.message) }
+    try { await approveUser(uid, approve); toast.success(approve ? 'Approved' : 'Rejected') }
+    catch (err) { toast.error(err.message) }
     finally { setActing(a => ({ ...a, [uid]: false })) }
   }
 
@@ -210,90 +239,121 @@ export default function AdminPage() {
     try {
       await updateDoc(doc(db, 'applications', appId), { status: approve ? 'approved' : 'rejected' })
       if (approve) await updateDoc(doc(db, 'users', uid), { role: 'instructor' })
-      toast.success(approve ? '🎤 Instructor approved!' : 'Rejected.')
-    } catch (e) { toast.error(e.message) }
+      toast.success(approve ? 'Instructor approved' : 'Rejected')
+    } catch (err) { toast.error(err.message) }
   }
 
+  // ── KEY FIX: document ID = the code itself ──────────────────────
   async function generateCodes() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    const chars    = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     const newCodes = Array.from({ length: genCount }, () =>
-      Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join(''))
+      Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    )
     try {
       await Promise.all(newCodes.map(code =>
-        addDoc(collection(db, 'inviteCodes'), { code, used: false, createdAt: serverTimestamp() })
+        setDoc(doc(db, 'inviteCodes', code), {
+          code,
+          used:      false,
+          usedBy:    null,
+          usedAt:    null,
+          plan:      genPlan,
+          createdAt: serverTimestamp(),
+          createdBy: 'admin',
+        })
       ))
-      toast.success(`${genCount} code(s) saved!`)
-    } catch (e) { toast.error(e.message) }
+      toast.success(`${genCount} code${genCount > 1 ? 's' : ''} generated`)
+    } catch (err) { toast.error(err.message) }
   }
 
+  async function deleteCode(codeId) {
+    try { await deleteDoc(doc(db, 'inviteCodes', codeId)); toast.success('Code deleted') }
+    catch (err) { toast.error(err.message) }
+  }
+
+  const unusedCodes = codes.filter(c => !c.used)
+  const usedCodes   = codes.filter(c => c.used)
+
   const stats = [
-    { l: 'Total Users',      v: users.length,                                                         c: 'text-blue-400',   i: ' ' },
-    { l: 'Active',           v: users.filter(u => !['suspended','banned'].includes(u.status)).length, c: 'text-green-400',  i: ' ' },
-    { l: 'Suspended/Banned', v: users.filter(u => ['suspended','banned'].includes(u.status)).length,  c: 'text-red-400',    i: ' ' },
-    { l: 'Pending Queue',    v: queue.filter(u => u.status === 'pending').length,                     c: 'text-amber-400',  i: ' ' },
-    { l: 'Instructor Apps',  v: apps.filter(a => a.status === 'pending').length,                      c: 'text-purple-400', i: ' ' },
-    { l: 'Invite Codes',     v: codes.filter(c => !c.used).length,                                    c: 'text-cyan-400',   i: ' ' },
+    { l: 'Total Users',      v: users.length,                                                         c: 'text-blue-400'   },
+    { l: 'Active',           v: users.filter(u => !['suspended','banned'].includes(u.status)).length, c: 'text-green-400'  },
+    { l: 'Suspended/Banned', v: users.filter(u => ['suspended','banned'].includes(u.status)).length,  c: 'text-red-400'    },
+    { l: 'Pending Approval', v: queue.filter(u => u.status === 'pending').length,                     c: 'text-amber-400'  },
+    { l: 'Instructor Apps',  v: apps.filter(a => a.status === 'pending').length,                      c: 'text-purple-400' },
+    { l: 'Available Codes',  v: unusedCodes.length,                                                   c: 'text-cyan-400'   },
   ]
 
   const TABS = [
-    { id: 'users', label: ' Users',          count: users.length },
-    { id: 'queue', label: ' Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
-    { id: 'apps',  label: ' Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
-    { id: 'codes', label: ' Invite Codes',    count: codes.filter(c => !c.used).length },
+    { id: 'users', label: 'Users',           count: users.length },
+    { id: 'queue', label: 'Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
+    { id: 'apps',  label: 'Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
+    { id: 'codes', label: 'Invite Codes',    count: unusedCodes.length },
   ]
 
   return (
     <div className="max-w-screen-xl mx-auto">
       {confirm && <ConfirmModal msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
+
       <div className="flex items-center gap-3 mb-5">
         <h1 className="font-[Montserrat] text-[1.35rem] font-black">Admin Panel</h1>
-        <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-red-900/30 text-red-300 border border-red-500/25">Admin Only</span>
+        <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-red-900/30 text-red-300 border border-red-500/25">
+          Admin Only
+        </span>
       </div>
+
+      {/* stats */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
         {stats.map(s => (
-          <div key={s.l} className="bg-[#161616] border border-white/[.06] rounded-[14px] p-3 text-center">
-            <div className="text-xl mb-1">{s.i}</div>
+          <div key={s.l} className="bg-[#111] border border-white/[.06] rounded-[12px] p-3 text-center">
             <div className={`font-[Montserrat] text-[1.3rem] font-black ${s.c}`}>{s.v}</div>
-            <div className="text-[0.58rem] text-gray-500 mt-0.5 leading-tight">{s.l}</div>
+            <div className="text-[0.58rem] text-gray-500 mt-0.5 leading-tight font-[Montserrat]">{s.l}</div>
           </div>
         ))}
       </div>
-      <div className="flex gap-1 bg-[#161616] border border-white/[.06] rounded-[12px] p-1 mb-5 overflow-x-auto">
+
+      {/* tabs */}
+      <div className="flex gap-1 bg-[#111] border border-white/[.06] rounded-[12px] p-1 mb-5 overflow-x-auto">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-[9px] text-[0.73rem] font-bold font-[Montserrat] whitespace-nowrap transition-all ${tab === t.id ? 'bg-[#E5181B] text-white' : 'text-gray-500 hover:text-white'}`}>
             {t.label}
-            {t.count > 0 && <span className={`text-[0.58rem] px-1.5 py-0.5 rounded-full font-bold ${tab === t.id ? 'bg-white/20' : 'bg-amber-500/20 text-amber-300'}`}>{t.count}</span>}
+            {t.count > 0 && (
+              <span className={`text-[0.58rem] px-1.5 py-0.5 rounded-full font-bold ${tab === t.id ? 'bg-white/20' : 'bg-amber-500/20 text-amber-300'}`}>
+                {t.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
+      {/* ── USERS ── */}
       {tab === 'users' && (
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] overflow-hidden">
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
           <div className="flex flex-wrap gap-2 p-4 border-b border-white/[.05]">
             <div className="relative flex-1 min-w-[180px]">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or email…"
-                className="w-full bg-[#1E1E1E] border border-white/[.06] rounded-[9px] pl-8 pr-3 py-2 text-white text-[0.78rem] outline-none font-[Poppins] placeholder-gray-600" />
+              <input value={search} onChange={ev => setSearch(ev.target.value)} placeholder="Search name or email…"
+                className="w-full bg-[#1a1a1a] border border-white/[.06] rounded-[8px] pl-3.5 pr-3 py-2 text-white text-[0.78rem] outline-none font-[Poppins] placeholder-gray-600" />
             </div>
-            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-              className="bg-[#1E1E1E] border border-white/[.06] rounded-[9px] px-3 py-2 text-white text-[0.75rem] outline-none font-[Poppins]">
+            <select value={roleFilter} onChange={ev => setRoleFilter(ev.target.value)}
+              className="bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3 py-2 text-white text-[0.75rem] outline-none font-[Poppins]">
               <option value="all">All Roles</option>
               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="bg-[#1E1E1E] border border-white/[.06] rounded-[9px] px-3 py-2 text-white text-[0.75rem] outline-none font-[Poppins]">
+            <select value={statusFilter} onChange={ev => setStatusFilter(ev.target.value)}
+              className="bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3 py-2 text-white text-[0.75rem] outline-none font-[Poppins]">
               <option value="all">All Status</option>
               <option value="approved">Active</option>
-              <option value="pending">Pending</option>
-              <option value="pending_approval">Pending Approval</option>
+              <option value="pending_approval">Pending</option>
               <option value="suspended">Suspended</option>
               <option value="banned">Banned</option>
             </select>
-            <div className="text-[0.7rem] text-gray-500 flex items-center ml-auto">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</div>
+            <div className="text-[0.7rem] text-gray-500 flex items-center ml-auto font-[Montserrat]">
+              {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
+            </div>
           </div>
           {loading ? (
-            <div className="flex justify-center py-16"><div className="w-7 h-7 rounded-full border-2 border-white/10 border-t-[#E5181B] animate-spin" /></div>
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-[#E5181B] animate-spin" />
+            </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-[0.85rem]">No users found.</div>
           ) : (
@@ -315,28 +375,47 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── APPROVAL QUEUE ── */}
       {tab === 'queue' && (
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Account Approval Queue</div>
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">
+            Account Approval Queue
+          </div>
           {queue.length === 0 ? (
-            <div className="text-[0.82rem] text-gray-500 py-6 text-center">✅ No pending accounts</div>
+            <div className="text-[0.82rem] text-gray-500 py-6 text-center">No pending accounts.</div>
           ) : (
             <div className="divide-y divide-white/[.05]">
               {queue.map(u => (
                 <div key={u.id} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0" style={{ background: strToColor(u.uid || u.id) }}>{initials(u.name || '?')}</div>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0"
+                    style={{ background: strToColor(u.uid || u.id) }}>
+                    {initials(u.name || '?')}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold text-[0.84rem]">{u.name}</span>
-                      <span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${STATUS_META[u.status]?.cls || STATUS_META.pending.cls}`}>{STATUS_META[u.status]?.label || 'Pending'}</span>
+                      <span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${STATUS_META[u.status]?.cls || STATUS_META.pending.cls}`}>
+                        {STATUS_META[u.status]?.label || 'Pending'}
+                      </span>
                     </div>
                     <div className="text-[0.73rem] text-gray-400">{u.email}</div>
-                    <div className="text-[0.67rem] text-gray-600 mt-0.5">Code: <strong className="text-gray-400 font-[Montserrat]">{u.inviteCode}</strong></div>
+                    <div className="text-[0.67rem] text-gray-600 mt-0.5">
+                      Code: <strong className="text-gray-400 font-[Montserrat]">{u.inviteCode}</strong>
+                      {u.plan && u.plan !== 'free' && (
+                        <span className="ml-2 text-amber-400 font-bold">· {u.plan} plan</span>
+                      )}
+                    </div>
                   </div>
                   {u.status === 'pending' && (
                     <div className="flex gap-2 flex-shrink-0">
-                      <button disabled={acting[u.id]} onClick={() => handleApprove(u.uid || u.id, true)} className="bg-green-900/30 text-green-300 border border-green-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">✅ Approve</button>
-                      <button disabled={acting[u.id]} onClick={() => handleApprove(u.uid || u.id, false)} className="bg-red-900/30 text-red-300 border border-red-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">✕ Reject</button>
+                      <button disabled={acting[u.id]} onClick={() => handleApprove(u.uid || u.id, true)}
+                        className="bg-green-900/30 text-green-300 border border-green-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">
+                        Approve
+                      </button>
+                      <button disabled={acting[u.id]} onClick={() => handleApprove(u.uid || u.id, false)}
+                        className="bg-red-900/30 text-red-300 border border-red-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">
+                        Reject
+                      </button>
                     </div>
                   )}
                 </div>
@@ -346,9 +425,12 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── INSTRUCTOR APPS ── */}
       {tab === 'apps' && (
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Instructor Applications</div>
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">
+            Instructor Applications
+          </div>
           {apps.length === 0 ? (
             <div className="text-[0.82rem] text-gray-500 py-6 text-center">No applications yet.</div>
           ) : (
@@ -356,23 +438,34 @@ export default function AdminPage() {
               {apps.map(a => (
                 <div key={a.id} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0" style={{ background: strToColor(a.uid) }}>{initials(a.name || a.displayName || '?')}</div>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0"
+                      style={{ background: strToColor(a.uid) }}>
+                      {initials(a.name || a.displayName || '?')}
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-[0.84rem]">{a.name || a.displayName}</span>
-                        <span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${a.status === 'pending' ? 'bg-amber-900/30 text-amber-300 border-amber-500/25' : 'bg-green-900/30 text-green-300 border-green-500/25'}`}>{a.status}</span>
+                        <span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${a.status === 'pending' ? 'bg-amber-900/30 text-amber-300 border-amber-500/25' : 'bg-green-900/30 text-green-300 border-green-500/25'}`}>
+                          {a.status}
+                        </span>
                       </div>
                       <div className="text-[0.72rem] text-gray-400">{a.email}</div>
                     </div>
                   </div>
-                  <div className="bg-[#1E1E1E] rounded-[10px] p-3 mb-3">
+                  <div className="bg-[#1a1a1a] rounded-[8px] p-3 mb-3">
                     <div className="text-[0.71rem] font-bold text-[#FF4447] mb-1">Topic: {a.topic}</div>
                     <div className="text-[0.73rem] text-gray-400 leading-relaxed line-clamp-3">{a.bio}</div>
                   </div>
                   {a.status === 'pending' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleInstructor(a.id, a.uid, true)} className="bg-green-900/30 text-green-300 border border-green-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">✅ Approve</button>
-                      <button onClick={() => handleInstructor(a.id, a.uid, false)} className="bg-red-900/30 text-red-300 border border-red-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">✕ Reject</button>
+                      <button onClick={() => handleInstructor(a.id, a.uid, true)}
+                        className="bg-green-900/30 text-green-300 border border-green-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">
+                        Approve
+                      </button>
+                      <button onClick={() => handleInstructor(a.id, a.uid, false)}
+                        className="bg-red-900/30 text-red-300 border border-red-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">
+                        Reject
+                      </button>
                     </div>
                   )}
                 </div>
@@ -382,32 +475,98 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── INVITE CODES ── */}
       {tab === 'codes' && (
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Invite Codes</div>
-          <div className="flex items-end gap-3 mb-5">
-            <div>
-              <label className="font-[Montserrat] text-[0.72rem] font-bold text-gray-300 block mb-1.5">How many?</label>
-              <input type="number" min={1} max={50} value={genCount} onChange={e => setGenCount(+e.target.value)}
-                className="w-24 bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins]" />
-            </div>
-            <button onClick={generateCodes} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-4 py-2.5 rounded-[10px] text-[0.8rem] font-bold font-[Montserrat]">🔑 Generate & Save</button>
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">
+            Invite Codes
           </div>
+
+          {/* generator */}
+          <div className="bg-[#1a1a1a] border border-white/[.06] rounded-[10px] p-4 mb-5">
+            <div className="text-[0.75rem] font-bold font-[Montserrat] text-gray-300 mb-3">Generate New Codes</div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">How many</label>
+                <input type="number" min={1} max={50} value={genCount}
+                  onChange={ev => setGenCount(Math.max(1, Math.min(50, +ev.target.value)))}
+                  className="w-20 bg-[#111] border border-white/[.06] rounded-[8px] px-3 py-2 text-white text-[0.81rem] outline-none font-[Poppins]" />
+              </div>
+              <div>
+                <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Plan</label>
+                <select value={genPlan} onChange={ev => setGenPlan(ev.target.value)}
+                  className="bg-[#111] border border-white/[.06] rounded-[8px] px-3 py-2 text-white text-[0.78rem] outline-none font-[Poppins]">
+                  {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                </select>
+              </div>
+              <button onClick={generateCodes}
+                className="bg-[#E5181B] hover:bg-[#C01215] text-white px-4 py-2 rounded-[8px] text-[0.78rem] font-bold font-[Montserrat] transition-colors">
+                Generate
+              </button>
+            </div>
+            <p className="text-[0.68rem] text-gray-600 mt-2">
+              Each code is single-use. Document ID = code string so signup validation works correctly.
+            </p>
+          </div>
+
+          {/* summary */}
+          <div className="flex items-center gap-4 mb-4 text-[0.72rem] font-[Montserrat]">
+            <span className="text-gray-500">{codes.length} total</span>
+            <span className="text-green-400 font-bold">{unusedCodes.length} available</span>
+            <span className="text-gray-600">{usedCodes.length} used</span>
+          </div>
+
           {codes.length === 0 ? (
             <div className="text-[0.82rem] text-gray-500 py-4 text-center">No codes yet. Generate some above.</div>
           ) : (
-            <>
-              <div className="font-[Montserrat] text-[0.7rem] font-bold text-gray-400 mb-2">{codes.filter(c => !c.used).length} unused · {codes.filter(c => c.used).length} used</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {codes.map(c => (
-                  <button key={c.id} onClick={() => { navigator.clipboard?.writeText(c.code); toast.success('Copied!') }}
-                    className={`font-[Montserrat] font-bold text-[0.82rem] tracking-widest rounded-[8px] py-2.5 px-3 text-center transition-all ${c.used ? 'bg-white/[.02] border border-white/[.04] text-gray-600 line-through cursor-not-allowed' : 'bg-[#1E1E1E] border border-red-500/20 text-[#FF4447] hover:bg-red-900/20'}`}>
-                    {c.code}
-                    {c.used && <div className="text-[0.55rem] font-normal text-gray-600 mt-0.5">Used</div>}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div className="flex flex-col gap-2">
+              {/* unused codes */}
+              {unusedCodes.length > 0 && (
+                <div>
+                  <div className="text-[0.65rem] font-bold tracking-[.08em] uppercase text-green-500 font-[Montserrat] mb-2">
+                    Available — click to copy
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-4">
+                    {unusedCodes.map(c => (
+                      <div key={c.id} className="flex items-center gap-1">
+                        <button
+                          onClick={() => { navigator.clipboard?.writeText(c.code); toast.success('Copied!') }}
+                          className="flex-1 font-[Montserrat] font-bold text-[0.8rem] tracking-widest bg-[#1a1a1a] border border-green-500/20 text-green-300 rounded-[8px] py-2.5 px-3 hover:bg-green-900/10 transition-all text-center">
+                          {c.code}
+                          {c.plan && c.plan !== 'free' && (
+                            <div className="text-[0.55rem] text-amber-400 font-normal mt-0.5">{c.plan}</div>
+                          )}
+                        </button>
+                        <button onClick={() => deleteCode(c.id)}
+                          className="text-gray-700 hover:text-red-400 transition-colors text-xs px-1">
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* used codes */}
+              {usedCodes.length > 0 && (
+                <div>
+                  <div className="text-[0.65rem] font-bold tracking-[.08em] uppercase text-gray-600 font-[Montserrat] mb-2">
+                    Used
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {usedCodes.map(c => (
+                      <div key={c.id}
+                        className="font-[Montserrat] font-bold text-[0.8rem] tracking-widest bg-[#0d0d0d] border border-white/[.04] text-gray-600 rounded-[8px] py-2.5 px-3 text-center line-through">
+                        {c.code}
+                        <div className="text-[0.55rem] font-normal text-gray-700 mt-0.5 no-underline" style={{textDecoration:'none'}}>
+                          Used
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
