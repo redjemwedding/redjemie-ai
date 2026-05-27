@@ -36,14 +36,14 @@ export function DashboardPage() {
   const kpis = [
     {l:'XP Points',  v:profile?.xp||0,            c:'text-[#FF4447]'},
     {l:'Posts Made', v:profile?.posts||0,          c:'text-blue-400'},
-    {l:'Day Streak', v:`🔥 ${profile?.streak||0}`, c:'text-amber-400'},
+    {l:'Day Streak', v:`${profile?.streak||0}`, c:'text-amber-400'},
     {l:'Role',       v:ROLE_META[profile?.role]?.label||'Member', c:'text-purple-400'},
   ]
 
   return (
     <div className="max-w-screen-lg mx-auto">
       <div className="mb-6 animate-fadeUp">
-        <h1 className="font-[Montserrat] text-[1.4rem] font-black mb-1">Good {greeting}, {firstName} 👋</h1>
+        <h1 className="font-[Montserrat] text-[1.4rem] font-black mb-1">Good {greeting}, {firstName}!</h1>
         <p className="text-[0.82rem] text-gray-500">Welcome to CTO Access Forum University.</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
