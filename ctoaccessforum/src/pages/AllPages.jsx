@@ -17,6 +17,7 @@ export function DashboardPage() {
   const { profile, isInstructor } = useAuth()
   const nav = useNavigate()
   const [posts, setPosts] = useState([])
+  const [leaders, setLeaders] = useState([])
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
   const firstName = profile?.displayName?.split(' ')[0] || 'there'
@@ -24,6 +25,12 @@ export function DashboardPage() {
   useEffect(() => {
     const q = query(collection(db,'posts'), orderBy('createdAt','desc'), limit(6))
     return onSnapshot(q, s => setPosts(s.docs.map(d=>({id:d.id,...d.data()}))), ()=>{})
+  }, [])
+
+  // ── real leaderboard from Firestore ──
+  useEffect(() => {
+    const q = query(collection(db,'users'), orderBy('xp','desc'), limit(5))
+    return onSnapshot(q, s => setLeaders(s.docs.map(d=>({id:d.id,...d.data()}))), ()=>{})
   }, [])
 
   const kpis = [
@@ -86,16 +93,14 @@ export function DashboardPage() {
         <div className="flex flex-col gap-4">
           <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
             <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-3">Top Members 🏆</div>
-            {[
-              {n:'Mark K.',xp:2140,uid:'m1'},{n:'Sara R.',xp:1890,uid:'m2'},
-              {n:'Ahmed L.',xp:1620,uid:'m3'},{n:'James P.',xp:1240,uid:'m4'},
-              {n:profile?.displayName||'You',xp:profile?.xp||0,uid:profile?.uid||'me',me:true}
-            ].map((m,i)=>(
-              <div key={m.uid} className={`flex items-center gap-2.5 py-2 border-b border-white/[.05] last:border-0 ${m.me?'bg-red-900/5 -mx-2 px-2 rounded-lg':''}`}>
+            {leaders.length === 0 ? (
+              <div className="text-[0.75rem] text-gray-500 py-3 text-center">Loading leaderboard…</div>
+            ) : leaders.map((m, i) => (
+              <div key={m.id} className={`flex items-center gap-2.5 py-2 border-b border-white/[.05] last:border-0 ${m.uid===profile?.uid?'bg-red-900/5 -mx-2 px-2 rounded-lg':''}`}>
                 <span className={`font-[Montserrat] text-[0.72rem] font-black w-4 text-center ${i<3?'text-[#E5181B]':'text-gray-600'}`}>{i+1}</span>
-                <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.56rem] flex-shrink-0" style={{background:strToColor(m.uid)}}>{initials(m.n)}</div>
-                <span className="flex-1 text-[0.74rem] font-medium truncate">{m.n}</span>
-                <span className="font-[Montserrat] text-[0.68rem] font-bold text-[#FF4447]">{m.xp.toLocaleString()} XP</span>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.56rem] flex-shrink-0" style={{background:strToColor(m.uid||m.id)}}>{initials(m.displayName||'?')}</div>
+                <span className="flex-1 text-[0.74rem] font-medium truncate">{m.displayName}{m.uid===profile?.uid?' (you)':''}</span>
+                <span className="font-[Montserrat] text-[0.68rem] font-bold text-[#FF4447]">{(m.xp||0).toLocaleString()} XP</span>
               </div>
             ))}
           </div>
@@ -141,7 +146,7 @@ export function ForumPage() {
         fileUrl, fileName, videoUrl:form.videoUrl||null,
         tags:form.tags.split(',').map(t=>t.trim()).filter(Boolean).slice(0,10),
         authorId:profile.uid, authorName:profile.displayName, authorRole:profile.role,
-        pinned:false, likes:0, replies:0, views:0,
+        pinned:false, likes:0, likedBy:[], replies:0, views:0,
         createdAt:serverTimestamp(), updatedAt:serverTimestamp()
       })
       await updateDoc(doc(db,'users',profile.uid),{posts:increment(1),xp:increment(5)})
@@ -149,6 +154,18 @@ export function ForumPage() {
       toast.success('Post published! 🎉')
     } catch(e){ toast.error(e.message) }
     finally{ setPosting(false) }
+  }
+
+  // ── like toggle (no spam) ──
+  async function toggleLike(p) {
+    if (!profile?.uid) return
+    const already = p.likedBy?.includes(profile.uid)
+    await updateDoc(doc(db,'posts',p.id), {
+      likes: increment(already ? -1 : 1),
+      likedBy: already
+        ? (p.likedBy||[]).filter(id => id !== profile.uid)
+        : [...(p.likedBy||[]), profile.uid]
+    })
   }
 
   return (
@@ -203,9 +220,13 @@ export function ForumPage() {
               {p.videoUrl && (()=>{ const e=parseVideoUrl(p.videoUrl); return e?<div className="mb-3 video-wrap"><iframe src={e.src} allowFullScreen className="absolute inset-0 w-full h-full"/></div>:null })()}
               {p.tags?.length>0 && <div className="flex flex-wrap gap-1.5 mb-3">{p.tags.map(t=><span key={t} className="text-[0.61rem] bg-white/[.04] border border-white/[.06] text-gray-400 px-2 py-0.5 rounded font-[Montserrat]">{t}</span>)}</div>}
               <div className="flex items-center gap-3 text-[0.72rem] text-gray-500">
-                <button onClick={()=>updateDoc(doc(db,'posts',p.id),{likes:increment(1)})} className="flex items-center gap-1 hover:text-[#FF4447] transition-colors">❤️ {p.likes||0}</button>
+                <button
+                  onClick={()=>toggleLike(p)}
+                  className={`flex items-center gap-1 transition-colors ${p.likedBy?.includes(profile?.uid)?'text-[#FF4447]':'hover:text-[#FF4447]'}`}>
+                  {p.likedBy?.includes(profile?.uid)?'❤️':'🤍'} {p.likes||0}
+                </button>
                 <span>💬 {p.replies||0}</span>
-                <button onClick={()=>{navigator.clipboard?.writeText(window.location.href);toast.success('Link copied!')}} className="ml-auto hover:text-white text-[0.65rem]">🔗 Share</button>
+                <button onClick={()=>{navigator.clipboard?.writeText(`${window.location.origin}/forum/post/${p.id}`);toast.success('Link copied!')}} className="ml-auto hover:text-white text-[0.65rem]">🔗 Share</button>
               </div>
             </div>
           ))}
@@ -411,7 +432,12 @@ export function ProfilePage() {
           {!isInstructor&&<button className="bg-white/[.04] border border-white/[.08] text-white px-3.5 py-1.5 rounded-[10px] text-[0.76rem] font-bold font-[Montserrat]">🎤 Apply as Instructor</button>}
         </div>
         <div className="grid grid-cols-4 gap-3 mt-5">
-          {[{l:'XP Points',v:profile.xp||0},{l:'Courses',v:0},{l:'Posts',v:profile.posts||0},{l:'Streak',v:`🔥 ${profile.streak||0}d`}].map(s=>(
+          {[
+            {l:'XP Points', v:profile.xp||0},
+            {l:'Courses',   v:profile.enrolledCourses?.length||0},
+            {l:'Posts',     v:profile.posts||0},
+            {l:'Streak',    v:`🔥 ${profile.streak||0}d`}
+          ].map(s=>(
             <div key={s.l} className="bg-white/[.03] border border-white/[.05] rounded-[10px] p-3 text-center">
               <div className="font-[Montserrat] text-[1.15rem] font-black text-[#FF4447]">{s.v}</div>
               <div className="text-[0.6rem] text-gray-500 mt-0.5">{s.l}</div>
@@ -429,156 +455,6 @@ export function ProfilePage() {
           {!isInstructor&&profile.plan!=='pro'&&<button className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[10px] text-[0.76rem] font-bold font-[Montserrat]">Upgrade →</button>}
         </div>
       </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════
-//  ADMIN PAGE
-// ═══════════════════════════════════════════════
-export function AdminPage() {
-  const { isAdmin, approveUser } = useAuth()
-  const [tab,    setTab]    = useState('queue')
-  const [queue,  setQueue]  = useState([])
-  const [apps,   setApps]   = useState([])
-  const [acting, setActing] = useState({})
-  const [codes,  setCodes]  = useState([])
-  const [genCount, setGenCount] = useState(1)
-
-  useEffect(()=>{
-    if (!isAdmin) return
-    const u1=onSnapshot(query(collection(db,'approvalQueue'),orderBy('submittedAt','desc')),s=>setQueue(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{})
-    const u2=onSnapshot(query(collection(db,'applications'),orderBy('appliedAt','desc')),s=>setApps(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{})
-    return ()=>{ u1(); u2() }
-  },[isAdmin])
-
-  if (!isAdmin) return <div className="flex items-center justify-center min-h-[50vh] text-gray-500">🔒 Admin access only.</div>
-
-  async function handleApprove(uid, approve) {
-    setActing(a=>({...a,[uid]:true}))
-    try { await approveUser(uid, approve); toast.success(approve?'✅ User approved!':'User rejected.') }
-    catch(e){ toast.error(e.message) }
-    finally{ setActing(a=>({...a,[uid]:false})) }
-  }
-
-  async function handleInstructor(appId, uid, approve) {
-    try {
-      await updateDoc(doc(db,'applications',appId),{status:approve?'approved':'rejected'})
-      if (approve) await updateDoc(doc(db,'users',uid),{role:'instructor'})
-      toast.success(approve?'🎤 Instructor approved!':'Rejected.')
-    } catch(e){ toast.error(e.message) }
-  }
-
-  function generateCodes() {
-    const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    const newCodes=Array.from({length:genCount},()=>Array.from({length:8},()=>chars[Math.floor(Math.random()*chars.length)]).join(''))
-    setCodes(p=>[...newCodes,...p])
-    toast.success(`${genCount} code(s) generated!`)
-  }
-
-  const TABS=[{id:'queue',label:'Approval Queue',count:queue.filter(u=>u.status==='pending').length},{id:'apps',label:'Instructor Apps',count:apps.filter(a=>a.status==='pending').length},{id:'codes',label:'Invite Codes'}]
-
-  return (
-    <div className="max-w-screen-lg mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="font-[Montserrat] text-[1.35rem] font-black">⚙️ Admin Panel</h1>
-        <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-red-900/30 text-red-300 border border-red-500/25">Admin Only</span>
-      </div>
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[{l:'Pending',v:queue.filter(u=>u.status==='pending').length,c:'text-amber-400',i:'⏳'},{l:'Instructor Apps',v:apps.filter(a=>a.status==='pending').length,c:'text-purple-400',i:'🎤'},{l:'Codes Generated',v:codes.length,c:'text-blue-400',i:'🔑'}].map(s=>(
-          <div key={s.l} className="bg-[#161616] border border-white/[.06] rounded-[14px] p-4 text-center">
-            <div className="text-2xl mb-1">{s.i}</div>
-            <div className={`font-[Montserrat] text-[1.5rem] font-black ${s.c}`}>{s.v}</div>
-            <div className="text-[0.62rem] text-gray-500 mt-0.5">{s.l}</div>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-1 bg-[#161616] border border-white/[.06] rounded-[12px] p-1 mb-5">
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-[9px] text-[0.74rem] font-bold font-[Montserrat] transition-all ${tab===t.id?'bg-[#E5181B] text-white':'text-gray-500 hover:text-white'}`}>
-            {t.label}
-            {t.count>0&&<span className={`text-[0.58rem] px-1.5 py-0.5 rounded-full font-bold ${tab===t.id?'bg-white/20':'bg-amber-500/20 text-amber-300'}`}>{t.count}</span>}
-          </button>
-        ))}
-      </div>
-      {tab==='queue'&&(
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Account Approval Queue</div>
-          {queue.length===0?<div className="text-[0.82rem] text-gray-500 py-6 text-center">✅ No pending accounts</div>:(
-            <div className="divide-y divide-white/[.05]">
-              {queue.map(u=>(
-                <div key={u.id} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0" style={{background:strToColor(u.uid||u.id)}}>{initials(u.name||'?')}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-semibold text-[0.84rem]">{u.name}</span>
-                      <span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${u.status==='pending'?'bg-amber-900/30 text-amber-300 border-amber-500/25':u.status==='approved'?'bg-green-900/30 text-green-300 border-green-500/25':'bg-white/5 text-gray-400 border-white/10'}`}>{u.status}</span>
-                    </div>
-                    <div className="text-[0.73rem] text-gray-400">{u.email}</div>
-                    <div className="text-[0.67rem] text-gray-600 mt-0.5">Code: <strong className="text-gray-400 font-[Montserrat]">{u.inviteCode}</strong></div>
-                  </div>
-                  {u.status==='pending'&&(
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button disabled={acting[u.id]} onClick={()=>handleApprove(u.uid||u.id,true)} className="bg-green-900/30 text-green-300 border border-green-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">✅ Approve</button>
-                      <button disabled={acting[u.id]} onClick={()=>handleApprove(u.uid||u.id,false)} className="bg-red-900/30 text-red-300 border border-red-500/25 px-2.5 py-1 rounded-[6px] text-[0.65rem] font-bold font-[Montserrat] disabled:opacity-50">✕ Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {tab==='apps'&&(
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Instructor Applications</div>
-          {apps.length===0?<div className="text-[0.82rem] text-gray-500 py-6 text-center">No applications yet.</div>:(
-            <div className="divide-y divide-white/[.05]">
-              {apps.map(a=>(
-                <div key={a.id} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold font-[Montserrat] text-white text-[0.68rem] flex-shrink-0" style={{background:strToColor(a.uid)}}>{initials(a.name||a.displayName||'?')}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2"><span className="font-semibold text-[0.84rem]">{a.name||a.displayName}</span><span className={`text-[0.6rem] font-bold font-[Montserrat] px-1.5 py-0.5 rounded-full border ${a.status==='pending'?'bg-amber-900/30 text-amber-300 border-amber-500/25':'bg-green-900/30 text-green-300 border-green-500/25'}`}>{a.status}</span></div>
-                      <div className="text-[0.72rem] text-gray-400">{a.email}</div>
-                    </div>
-                  </div>
-                  <div className="bg-[#1E1E1E] rounded-[10px] p-3 mb-3">
-                    <div className="text-[0.71rem] font-bold text-[#FF4447] mb-1">Topic: {a.topic}</div>
-                    <div className="text-[0.73rem] text-gray-400 leading-relaxed line-clamp-3">{a.bio}</div>
-                  </div>
-                  {a.status==='pending'&&(
-                    <div className="flex gap-2">
-                      <button onClick={()=>handleInstructor(a.id,a.uid,true)} className="bg-green-900/30 text-green-300 border border-green-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">✅ Approve</button>
-                      <button onClick={()=>handleInstructor(a.id,a.uid,false)} className="bg-red-900/30 text-red-300 border border-red-500/25 px-3 py-1.5 rounded-[6px] text-[0.7rem] font-bold font-[Montserrat]">✕ Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {tab==='codes'&&(
-        <div className="bg-[#161616] border border-white/[.06] rounded-[14px] p-5">
-          <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-4">Generate Invite Codes</div>
-          <div className="flex items-center gap-3 mb-4">
-            <div>
-              <label className="font-[Montserrat] text-[0.72rem] font-bold text-gray-300 block mb-1.5">How many?</label>
-              <input type="number" min={1} max={50} value={genCount} onChange={e=>setGenCount(+e.target.value)} className="w-24 bg-[#1E1E1E] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins]"/>
-            </div>
-            <button onClick={generateCodes} className="mt-5 bg-[#E5181B] hover:bg-[#C01215] text-white px-4 py-2.5 rounded-[10px] text-[0.8rem] font-bold font-[Montserrat]">🔑 Generate</button>
-          </div>
-          {codes.length>0&&(
-            <div>
-              <div className="font-[Montserrat] text-[0.7rem] font-bold text-gray-400 mb-2">Click any code to copy — then add it to Firestore inviteCodes collection:</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {codes.map(c=><button key={c} onClick={()=>{navigator.clipboard?.writeText(c);toast.success('Copied!')}} className="font-[Montserrat] font-bold text-[0.82rem] tracking-widest bg-[#1E1E1E] border border-red-500/20 text-[#FF4447] rounded-[8px] py-2.5 px-3 hover:bg-red-900/20 transition-all text-center">{c}</button>)}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
