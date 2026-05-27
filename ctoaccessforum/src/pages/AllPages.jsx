@@ -95,7 +95,7 @@ export function DashboardPage() {
             <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
               <div className="font-[Montserrat] text-[0.88rem] font-bold mb-1">Teach on the Platform</div>
               <div className="text-[0.76rem] text-gray-400 leading-relaxed mb-3">Apply to become an instructor — reviewed within 3–5 business days.</div>
-              <button onClick={() => nav('/profile?apply=1')} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
+              <button onClick={() => nav('/instructor/apply')} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
                 Apply as Instructor
               </button>
             </div>
