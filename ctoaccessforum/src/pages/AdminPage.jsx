@@ -235,13 +235,29 @@ export default function AdminPage() {
     finally { setActing(a => ({ ...a, [uid]: false })) }
   }
 
-  async function handleInstructor(appId, uid, approve) {
-    try {
-      await updateDoc(doc(db, 'applications', appId), { status: approve ? 'approved' : 'rejected' })
-      if (approve) await updateDoc(doc(db, 'users', uid), { role: 'instructor' })
-      toast.success(approve ? 'Instructor approved' : 'Rejected')
-    } catch (err) { toast.error(err.message) }
-  }
+async function handleInstructor(appId, uid, approve, note = '') {
+  try {
+    await updateDoc(doc(db, 'applications', appId), {
+      status: approve ? 'approved' : 'rejected',
+      adminNote: note || null,
+      reviewedAt: serverTimestamp(),
+    })
+    if (approve) {
+      await updateDoc(doc(db, 'users', uid), { role: 'instructor' })
+    }
+    // notify applicant
+    const { notify } = await import('@/lib/notifications')
+    await notify(uid, {
+      type:    approve ? 'approved' : 'system',
+      message: approve
+        ? 'Congratulations! Your instructor application has been approved.'
+        : 'Your instructor application was not approved at this time.',
+      preview: note || null,
+      link:    '/profile',
+    })
+    toast.success(approve ? 'Instructor approved' : 'Rejected')
+  } catch (err) { toast.error(err.message) }
+}
 
   // ── KEY FIX: document ID = the code itself ──────────────────────
   async function generateCodes() {
