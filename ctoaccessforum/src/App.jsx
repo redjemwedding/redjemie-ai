@@ -13,6 +13,7 @@ import EventsPage from '@/pages/EventsPage'
 import ProfilePage from '@/pages/ProfilePage'
 import AdminPage from '@/pages/AdminPage'
 import NotificationsPage from '@/pages/NotificationsPage'
+import InstructorApplyPage from '@/pages/InstructorApplyPage'
 
 function Spinner() {
   return (
@@ -36,18 +37,19 @@ function AppRoutes() {
   return (
     <AppLayout>
       <Routes>
-        <Route index                       element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard"            element={<DashboardPage />} />
-        <Route path="forum"                element={<ForumPage />} />
-        <Route path="forum/:ch"            element={<ForumPage />} />
-        <Route path="forum/post/:postId"   element={<PostPage />} />
-        <Route path="courses"              element={<CoursesPage />} />
-        <Route path="resources"            element={<ResourcesPage />} />
-        <Route path="events"               element={<EventsPage />} />
-        <Route path="profile"              element={<ProfilePage />} />
-        <Route path="notifications"        element={<NotificationsPage />} />
-        {isAdmin && <Route path="admin"    element={<AdminPage />} />}
-        <Route path="*"                    element={<Navigate to="dashboard" replace />} />
+        <Route index                         element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard"              element={<DashboardPage />} />
+        <Route path="forum"                  element={<ForumPage />} />
+        <Route path="forum/:ch"              element={<ForumPage />} />
+        <Route path="forum/post/:postId"     element={<PostPage />} />
+        <Route path="courses"                element={<CoursesPage />} />
+        <Route path="resources"              element={<ResourcesPage />} />
+        <Route path="events"                 element={<EventsPage />} />
+        <Route path="profile"                element={<ProfilePage />} />
+        <Route path="notifications"          element={<NotificationsPage />} />
+        <Route path="instructor/apply"       element={<InstructorApplyPage />} />
+        {isAdmin && <Route path="admin"      element={<AdminPage />} />}
+        <Route path="*"                      element={<Navigate to="dashboard" replace />} />
       </Routes>
     </AppLayout>
   )
