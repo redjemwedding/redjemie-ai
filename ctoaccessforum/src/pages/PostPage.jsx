@@ -263,7 +263,7 @@ export default function PostPage() {
   const [replies,  setReplies] = useState([])
   const [loading,  setLoading] = useState(true)
   const [replyTo,  setReplyTo] = useState(null)
-  const [editing,  setEditing] = useState(false)
+  const [editing,  setEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === '1')
   const [editForm, setEditForm]= useState({ title: '', body: '', tags: '' })
   const composerRef = useRef(null)
   const repliesEndRef = useRef(null)
@@ -271,8 +271,14 @@ export default function PostPage() {
   useEffect(() => {
     if (!postId) return
     getDoc(doc(db, 'posts', postId)).then(snap => {
-      if (snap.exists()) setPost({ id: snap.id, ...snap.data() })
-      else { toast.error('Post not found'); nav(-1) }
+      if (snap.exists()) {
+        const data = { id: snap.id, ...snap.data() }
+        setPost(data)
+        // pre-populate edit form if opened via ?edit=1
+        if (new URLSearchParams(window.location.search).get('edit') === '1') {
+          setEditForm({ title: data.title || '', body: data.body || '', tags: (data.tags || []).join(', ') })
+        }
+      } else { toast.error('Post not found'); nav(-1) }
       setLoading(false)
     })
   }, [postId])
@@ -351,7 +357,7 @@ export default function PostPage() {
   const channel   = CHANNELS.find(c => c.id === normalizeChannel(post.channel))
   const postLiked = post.likedBy?.includes(profile?.uid)
   const canDelete = isAdmin || post.authorId === profile?.uid
-  const canEdit   = post.authorId === profile?.uid
+  const canEdit   = post.authorId === profile?.uid || isAdmin
 
   const ic = "w-full bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3.5 py-2.5 text-white outline-none font-[Poppins] focus:border-[rgba(229,24,27,.3)] transition-colors"
 
