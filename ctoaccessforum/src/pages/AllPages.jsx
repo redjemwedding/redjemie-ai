@@ -34,10 +34,10 @@ export function DashboardPage() {
   }, [])
 
   const kpis = [
-    { l: 'XP Points',  v: (profile?.xp || 0).toLocaleString(), c: 'text-[#FF4447]' },
-    { l: 'Posts',      v: profile?.posts || 0,                  c: 'text-blue-400'  },
-    { l: 'Courses',    v: profile?.enrolledCourses?.length || 0, c: 'text-green-400' },
-    { l: 'Streak',     v: `${profile?.streak || 0} days`,       c: 'text-amber-400' },
+    { l: 'XP Points', v: (profile?.xp || 0).toLocaleString(), c: 'text-[#FF4447]' },
+    { l: 'Posts',     v: profile?.posts || 0,                  c: 'text-blue-400'  },
+    { l: 'Courses',   v: profile?.enrolledCourses?.length || 0, c: 'text-green-400' },
+    { l: 'Streak',    v: `${profile?.streak || 0} days`,       c: 'text-amber-400' },
   ]
 
   return (
@@ -46,7 +46,6 @@ export function DashboardPage() {
         <h1 className="font-[Montserrat] text-[1.4rem] font-black mb-1">{greeting}, {firstName}</h1>
         <p className="text-[0.82rem] text-gray-500">Welcome to CTO Access Forum University.</p>
       </div>
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {kpis.map(k => (
           <div key={k.l} className="bg-[#111] border border-white/[.06] rounded-[12px] p-4 relative overflow-hidden">
@@ -56,7 +55,6 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
         <div className="flex flex-col gap-4">
           <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
@@ -90,18 +88,17 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-
           {!isInstructor && (
             <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
               <div className="font-[Montserrat] text-[0.88rem] font-bold mb-1">Teach on the Platform</div>
               <div className="text-[0.76rem] text-gray-400 leading-relaxed mb-3">Apply to become an instructor — reviewed within 3–5 business days.</div>
-              <button onClick={() => nav('/instructor/apply')} className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
+              <button onClick={() => nav('/instructor/apply')}
+                className="bg-[#E5181B] hover:bg-[#C01215] text-white px-3.5 py-1.5 rounded-[8px] text-[0.74rem] font-bold font-[Montserrat] transition-colors">
                 Apply as Instructor
               </button>
             </div>
           )}
         </div>
-
         <div className="flex flex-col gap-4">
           <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
             <div className="font-[Montserrat] text-[0.68rem] font-bold tracking-[.08em] uppercase text-gray-500 mb-3">Top Members</div>
@@ -134,7 +131,6 @@ export function ForumPage() {
   const { profile } = useAuth()
   const { ch }      = useParams()
   const nav         = useNavigate()
-
   const [channel, setChannel] = useState(ch || 'all')
   const [posts,   setPosts]   = useState([])
   const [loading, setLoading] = useState(true)
@@ -221,9 +217,7 @@ export function ForumPage() {
           New Post
         </button>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-[168px_1fr] gap-4">
-        {/* channels */}
         <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0">
           {CHANNELS.map(c => (
             <button key={c.id} onClick={() => setChannel(c.id)}
@@ -233,14 +227,11 @@ export function ForumPage() {
             </button>
           ))}
         </div>
-
-        {/* posts */}
         <div>
           <div className="mb-4">
             <input value={search} onChange={ev => setSearch(ev.target.value)} placeholder="Search posts…"
               className="w-full bg-[#111] border border-white/[.06] rounded-[8px] px-3.5 py-2.5 text-white text-[0.8rem] outline-none font-[Poppins] placeholder-gray-600" />
           </div>
-
           {loading ? (
             <div className="flex justify-center py-16">
               <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-[#E5181B] animate-spin" />
@@ -270,13 +261,11 @@ export function ForumPage() {
                   </div>
                 </div>
               </div>
-
               <div onClick={() => nav(`/forum/post/${p.id}`)}
                 className="font-[Montserrat] text-[0.9rem] font-bold mb-1.5 cursor-pointer hover:text-[#FF4447] transition-colors leading-snug">
                 {p.title}
               </div>
               <div className="text-[0.77rem] text-gray-400 leading-relaxed mb-3 line-clamp-2">{p.body}</div>
-
               {p.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {p.tags.map(t => (
@@ -284,9 +273,7 @@ export function ForumPage() {
                   ))}
                 </div>
               )}
-
               {p.videoUrl && (() => { const e = parseVideoUrl(p.videoUrl); return e ? <div className="mb-3 video-wrap"><iframe src={e.src} allowFullScreen className="absolute inset-0 w-full h-full border-0" /></div> : null })()}
-
               {p.fileUrl && (
                 <div className="flex items-center gap-2.5 bg-[#1a1a1a] border border-white/[.05] rounded-[7px] px-3 py-2 mb-3">
                   <div className="text-[0.62rem] font-bold text-gray-500 font-[Montserrat] uppercase w-8 h-7 flex items-center justify-center bg-white/[.03] border border-white/[.06] rounded flex-shrink-0">
@@ -297,7 +284,6 @@ export function ForumPage() {
                     className="text-[0.68rem] font-bold font-[Montserrat] text-[#FF4447] hover:underline flex-shrink-0">Download</a>
                 </div>
               )}
-
               <div className="flex items-center gap-4 text-[0.72rem] text-gray-500 pt-2.5 border-t border-white/[.04]">
                 <button onClick={() => toggleLike(p)}
                   className={`flex items-center gap-1.5 transition-colors ${p.likedBy?.includes(profile?.uid) ? 'text-[#FF4447]' : 'hover:text-gray-300'}`}>
@@ -316,8 +302,6 @@ export function ForumPage() {
           ))}
         </div>
       </div>
-
-      {/* new post modal */}
       {showNew && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[900] flex items-center justify-center p-5"
           onClick={ev => ev.target === ev.currentTarget && setShowNew(false)}>
@@ -351,8 +335,7 @@ export function ForumPage() {
                 <label className="block text-[0.68rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Attachment (optional)</label>
                 <div className="border border-dashed border-white/[.08] rounded-[8px] px-4 py-3 cursor-pointer hover:border-red-500/25 transition-colors text-center"
                   onClick={() => document.getElementById('f-file').click()}>
-                  {file
-                    ? <span className="text-[0.78rem] text-white">{file.name}</span>
+                  {file ? <span className="text-[0.78rem] text-white">{file.name}</span>
                     : <span className="text-[0.75rem] text-gray-500">Click to attach — PDF, DOCX, ZIP, max 50MB</span>}
                   {upPct > 0 && (
                     <div className="h-1 bg-white/[.06] rounded-full mt-2 overflow-hidden">
@@ -448,14 +431,10 @@ export function CoursesPage() {
           ))}
         </div>
       </div>
-
-      <div className="bg-green-900/10 border border-green-500/20 rounded-[12px] p-4 mb-5 flex items-center gap-3">
-        <div>
-          <div className="font-[Montserrat] text-[0.8rem] font-bold text-green-300 mb-0.5">Free Courses Available</div>
-          <div className="text-[0.72rem] text-gray-500">Courses marked Free are fully unlocked for all members.</div>
-        </div>
+      <div className="bg-green-900/10 border border-green-500/20 rounded-[12px] p-4 mb-5">
+        <div className="font-[Montserrat] text-[0.8rem] font-bold text-green-300 mb-0.5">Free Courses Available</div>
+        <div className="text-[0.72rem] text-gray-500">Courses marked Free are fully unlocked for all members.</div>
       </div>
-
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-[#E5181B] animate-spin" />
@@ -468,6 +447,7 @@ export function CoursesPage() {
             const enrolled = profile?.enrolledCourses?.includes(c.id)
             return (
               <div key={c.id}
+                onClick={() => nav(`/courses/${c.id}`)}
                 className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden cursor-pointer hover:border-red-500/20 hover:-translate-y-0.5 transition-all">
                 <div className="h-28 flex items-center justify-center relative text-[0.9rem] font-black text-white font-[Montserrat]"
                   style={{ background: c.thumbnail || 'linear-gradient(135deg,#1a0505,#3d0a0a)' }}>
@@ -476,9 +456,7 @@ export function CoursesPage() {
                     {c.level || 'All levels'}
                   </span>
                   {c.price === 0 && (
-                    <span className="absolute top-2 right-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded bg-green-900/40 text-green-300 border border-green-500/25">
-                      Free
-                    </span>
+                    <span className="absolute top-2 right-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded bg-green-900/40 text-green-300 border border-green-500/25">Free</span>
                   )}
                 </div>
                 <div className="p-4">
@@ -488,7 +466,7 @@ export function CoursesPage() {
                   <div className="flex items-center justify-between border-t border-white/[.05] pt-3">
                     <div className="text-[0.64rem] text-gray-500">{c.lessons || 0} lessons · {c.duration || '—'}</div>
                     <button onClick={() => handleEnroll(c)}
-                      className={`text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] transition-colors ${enrolled ? 'bg-green-900/20 text-green-400 border border-green-500/20' : c.price === 0 ? 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20' : 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20'}`}>
+                      className={`text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] transition-colors ${enrolled ? 'bg-green-900/20 text-green-400 border border-green-500/20' : 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20'}`}>
                       {enrolled ? 'Continue' : c.price === 0 ? 'Enroll Free' : `AED ${c.price}`}
                     </button>
                   </div>
@@ -507,17 +485,15 @@ export function CoursesPage() {
 // ═══════════════════════════════════════════════
 export function ProfilePage() {
   const { profile, isInstructor, refreshProfile } = useAuth()
-  const [editing, setEditing] = useState(false)
-  const [saving,  setSaving]  = useState(false)
-  const [applying, setApplying] = useState(() => new URLSearchParams(window.location.search).get("apply") === "1")
-  const [appForm, setAppForm] = useState({ topic: '', bio: '' })
+  const nav = useNavigate()
+  const [editing,  setEditing]  = useState(false)
+  const [saving,   setSaving]   = useState(false)
   const [form, setForm] = useState({
     displayName: profile?.displayName || '',
     title:       profile?.title       || '',
     location:    profile?.location    || '',
     bio:         profile?.bio         || '',
   })
-
   const rm = ROLE_META[profile?.role] || ROLE_META.member_free
 
   if (!profile) return (
@@ -553,33 +529,12 @@ export function ProfilePage() {
     finally { setSaving(false) }
   }
 
-  async function submitInstructorApp() {
-    if (!appForm.topic.trim() || !appForm.bio.trim()) {
-      toast.error('Please fill in all fields'); return
-    }
-    try {
-      await addDoc(collection(db, 'applications'), {
-        uid:         profile.uid,
-        name:        profile.displayName,
-        email:       profile.email,
-        topic:       appForm.topic.trim(),
-        bio:         appForm.bio.trim(),
-        status:      'pending',
-        appliedAt:   serverTimestamp(),
-      })
-      toast.success('Application submitted! Admin will review within 3–5 days.')
-      setApplying(false)
-      setAppForm({ topic: '', bio: '' })
-    } catch (err) { toast.error(err.message) }
-  }
-
   const ic = "w-full bg-[#1a1a1a] border border-white/[.06] rounded-[8px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
-
   const stats = [
-    { l: 'XP Points', v: (profile.xp    || 0).toLocaleString() },
-    { l: 'Courses',   v: profile.enrolledCourses?.length || 0   },
-    { l: 'Posts',     v: profile.posts   || 0                   },
-    { l: 'Streak',    v: `${profile.streak || 0} days`          },
+    { l: 'XP Points', v: (profile.xp || 0).toLocaleString() },
+    { l: 'Courses',   v: profile.enrolledCourses?.length || 0 },
+    { l: 'Posts',     v: profile.posts || 0 },
+    { l: 'Streak',    v: `${profile.streak || 0} days` },
   ]
 
   return (
@@ -605,7 +560,6 @@ export function ProfilePage() {
             </button>
           )}
         </div>
-
         <div className="flex items-center gap-4 mb-5">
           <div className="w-14 h-14 rounded-full flex items-center justify-center font-black font-[Montserrat] text-white text-lg border-2 border-white/[.08] flex-shrink-0"
             style={{ background: strToColor(profile.uid || '') }}>
@@ -622,14 +576,11 @@ export function ProfilePage() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full border ${rm.cls}`}>{rm.badge}</span>
               {profile.status === 'approved' && (
-                <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-green-900/20 text-green-400 border border-green-500/20">
-                  Verified
-                </span>
+                <span className="text-[0.6rem] font-bold font-[Montserrat] px-2 py-0.5 rounded-full bg-green-900/20 text-green-400 border border-green-500/20">Verified</span>
               )}
             </div>
           </div>
         </div>
-
         {editing ? (
           <div className="flex flex-col gap-3 mb-5">
             <div>
@@ -682,7 +633,6 @@ export function ProfilePage() {
             )}
           </div>
         )}
-
         <div className="grid grid-cols-4 gap-2 pt-4 border-t border-white/[.05]">
           {stats.map(s => (
             <div key={s.l} className="bg-white/[.02] border border-white/[.04] rounded-[8px] p-2.5 text-center">
@@ -702,9 +652,7 @@ export function ProfilePage() {
               {profile.plan === 'pro' ? 'Pro Member' : isInstructor ? 'Instructor' : 'Free Plan'}
             </div>
             <div className="text-[0.72rem] text-gray-500">
-              {profile.plan !== 'pro' && !isInstructor
-                ? 'Upgrade to access all courses and certificates.'
-                : 'Full platform access.'}
+              {profile.plan !== 'pro' && !isInstructor ? 'Upgrade to access all courses and certificates.' : 'Full platform access.'}
             </div>
           </div>
           {!isInstructor && profile.plan !== 'pro' && (
@@ -715,45 +663,17 @@ export function ProfilePage() {
         </div>
       </div>
 
-      {/* instructor application */}
+      {/* instructor apply */}
       {!isInstructor && (
         <div className="bg-[#111] border border-white/[.06] rounded-[14px] p-5">
           <div className="text-[0.65rem] font-bold tracking-[.1em] uppercase text-gray-600 font-[Montserrat] mb-3">Teach on the Platform</div>
-          {applying ? (
-            <div className="flex flex-col gap-3">
-              <div>
-                <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Topic / Expertise</label>
-                <input value={appForm.topic} onChange={ev => setAppForm(f => ({ ...f, topic: ev.target.value }))}
-                  placeholder="e.g. Cloud Architecture, Cybersecurity" maxLength={100} className={ic} />
-              </div>
-              <div>
-                <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Why you want to teach</label>
-                <textarea value={appForm.bio} onChange={ev => setAppForm(f => ({ ...f, bio: ev.target.value }))}
-                  placeholder="Tell us about your experience and what you'd like to teach…" rows={3} maxLength={500}
-                  className={`${ic} resize-none`} />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setApplying(false)}
-                  className="px-4 py-2 bg-white/[.04] border border-white/[.08] text-gray-400 text-[0.74rem] font-bold font-[Montserrat] rounded-[7px]">
-                  Cancel
-                </button>
-                <button onClick={submitInstructorApp}
-                  className="flex-1 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.74rem] font-bold font-[Montserrat] rounded-[7px] transition-colors">
-                  Submit Application
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-3">
-                Share your expertise with the community. Applications reviewed within 3–5 business days.
-              </p>
-              <button onClick={() => setApplying(true)}
-                className="px-4 py-2 bg-white/[.04] border border-white/[.08] text-white text-[0.74rem] font-bold font-[Montserrat] rounded-[7px] hover:bg-white/[.07] transition-colors">
-                Apply as Instructor
-              </button>
-            </>
-          )}
+          <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-3">
+            Share your expertise with the community. 60% revenue share. Applications reviewed within 3–5 business days.
+          </p>
+          <button onClick={() => nav('/instructor/apply')}
+            className="px-4 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.74rem] font-bold font-[Montserrat] rounded-[7px] transition-colors">
+            Apply as Instructor
+          </button>
         </div>
       )}
     </div>
