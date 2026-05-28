@@ -14,6 +14,7 @@ import CoursePlayerPage from '@/pages/CoursePlayerPage'
 import CourseBuilderPage from '@/pages/CourseBuilderPage'
 import CertificatePage from '@/pages/CertificatePage'
 import MyCertificatesPage from '@/pages/MyCertificatesPage'
+import VerifyCertificatePage from '@/pages/VerifyCertificatePage'
 import ResourcesPage from '@/pages/ResourcesPage'
 import EventsPage from '@/pages/EventsPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -30,7 +31,16 @@ function Spinner() {
 }
 
 export default function App() {
-  return <AuthProvider><AppRoutes /></AuthProvider>
+  return (
+    <AuthProvider>
+      <Routes>
+        {/* ── PUBLIC — no auth required ── */}
+        <Route path="/verify/:certId" element={<VerifyCertificatePage />} />
+        {/* ── PROTECTED ── */}
+        <Route path="/*" element={<AppRoutes />} />
+      </Routes>
+    </AuthProvider>
+  )
 }
 
 function AppRoutes() {
