@@ -449,14 +449,27 @@ export function CoursesPage() {
               <div key={c.id}
                 onClick={() => nav(`/courses/${c.id}`)}
                 className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden cursor-pointer hover:border-red-500/20 hover:-translate-y-0.5 transition-all">
-                <div className="h-28 flex items-center justify-center relative text-[0.9rem] font-black text-white font-[Montserrat]"
-                  style={{ background: c.thumbnail || 'linear-gradient(135deg,#1a0505,#3d0a0a)' }}>
-                  {c.emoji || c.title?.charAt(0) || 'C'}
-                  <span className={`absolute top-2 left-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded uppercase ${c.level === 'Beginner' ? 'bg-green-900/40 text-green-300' : c.level === 'Advanced' ? 'bg-red-900/40 text-red-300' : 'bg-yellow-900/40 text-yellow-300'}`}>
+                {/* thumbnail — use img if URL, fallback to gradient */}
+                <div className="h-28 relative overflow-hidden">
+                  {c.thumbnailUrl ? (
+                    <img src={c.thumbnailUrl} alt={c.title}
+                      className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-black text-white font-[Montserrat] text-2xl"
+                      style={{ background: 'linear-gradient(135deg,#1a0505,#3d0a0a)' }}>
+                      {c.title?.charAt(0) || 'C'}
+                    </div>
+                  )}
+                  <span className={`absolute top-2 left-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded uppercase ${c.level === 'Beginner' ? 'bg-green-900/60 text-green-300' : c.level === 'Advanced' ? 'bg-red-900/60 text-red-300' : 'bg-yellow-900/60 text-yellow-300'}`}>
                     {c.level || 'All levels'}
                   </span>
-                  {c.price === 0 && (
-                    <span className="absolute top-2 right-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded bg-green-900/40 text-green-300 border border-green-500/25">Free</span>
+                  {c.isFree && (
+                    <span className="absolute top-2 right-2 text-[0.58rem] font-bold font-[Montserrat] px-2 py-0.5 rounded bg-green-900/60 text-green-300 border border-green-500/25">Free</span>
+                  )}
+                  {enrolled && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+                      <div className="h-full bg-[#E5181B]" style={{ width: '30%' }} />
+                    </div>
                   )}
                 </div>
                 <div className="p-4">
@@ -464,10 +477,11 @@ export function CoursesPage() {
                   <div className="font-[Montserrat] font-bold text-[0.85rem] mb-1.5 leading-snug">{c.title}</div>
                   <div className="text-[0.67rem] text-gray-500 mb-3">{c.instructorName || 'CTO Access'}</div>
                   <div className="flex items-center justify-between border-t border-white/[.05] pt-3">
-                    <div className="text-[0.64rem] text-gray-500">{c.lessons || 0} lessons · {c.duration || '—'}</div>
-                    <button onClick={() => handleEnroll(c)}
-                      className={`text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] transition-colors ${enrolled ? 'bg-green-900/20 text-green-400 border border-green-500/20' : 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20'}`}>
-                      {enrolled ? 'Continue' : c.price === 0 ? 'Enroll Free' : `AED ${c.price}`}
+                    <div className="text-[0.64rem] text-gray-500">{c.lessons || 0} lessons</div>
+                    <button
+                      onClick={ev => { ev.stopPropagation(); handleEnroll(c) }}
+                      className={`text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] transition-colors ${enrolled ? 'bg-blue-900/20 text-blue-400 border border-blue-500/20' : 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20'}`}>
+                      {enrolled ? 'Resume' : c.isFree ? 'Enroll Free' : `AED ${c.price}`}
                     </button>
                   </div>
                 </div>
