@@ -30,7 +30,7 @@ const PRESENCE_INTERVAL = 2 * 60 * 1000
 const ONLINE_THRESHOLD  = 10 * 60 * 1000
 
 export default function AppLayout({ children }) {
-  const { profile, isAdmin, signOut } = useAuth()
+  const { profile, isAdmin, isInstructor, signOut } = useAuth()
   const [open,         setOpen]        = useState(false)
   const [onlineUsers,  setOnlineUsers] = useState([])
   const [unreadCount,  setUnreadCount] = useState(0)
@@ -126,6 +126,14 @@ export default function AppLayout({ children }) {
               Admin
             </NavLink>
           )}
+          {(isAdmin || isInstructor) && (
+            <NavLink to="courses/create"
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-lg text-[0.73rem] font-medium font-[Montserrat] transition-all whitespace-nowrap
+                ${isActive ? 'text-[#FF4447] font-semibold' : 'text-gray-500 hover:text-white'}`}>
+              Create Course
+            </NavLink>
+          )}
         </nav>
 
         {/* right side */}
@@ -172,6 +180,7 @@ export default function AppLayout({ children }) {
         <aside className={`${open ? 'flex' : 'hidden'} lg:flex flex-col w-[196px] flex-shrink-0 border-r border-white/[.05] bg-[#0c0c0c] fixed lg:sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto z-[200] lg:z-auto p-3 gap-0.5`}>
           {NAV.map(n => <NavItem key={n.to} {...n} />)}
           {isAdmin && <NavItem to="admin" label="Admin Panel" />}
+          {(isAdmin || isInstructor) && <NavItem to="courses/create" label="Create Course" />}
           <NavItem to="notifications" label={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'} />
 
           <div className="mt-4 mb-1.5 px-2.5 text-[0.58rem] font-bold tracking-[.14em] uppercase text-gray-700">
