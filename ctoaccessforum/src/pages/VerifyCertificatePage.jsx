@@ -1,7 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+
+function CTOLogo({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="vg1" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#FF6B6B"/>
+          <stop offset="50%" stopColor="#E5181B"/>
+          <stop offset="100%" stopColor="#8B0000"/>
+        </radialGradient>
+      </defs>
+      <circle cx="100" cy="105" r="85" fill="url(#vg1)"/>
+      <rect x="88" y="18" width="10" height="14" rx="2" fill="#FF4444"/>
+      <rect x="102" y="16" width="10" height="14" rx="2" fill="#E5181B"/>
+      <rect x="116" y="20" width="10" height="14" rx="2" fill="#CC1010"/>
+      <rect x="74" y="22" width="10" height="14" rx="2" fill="#FF5555"/>
+      <path d="M40 75 Q70 45 120 60 Q155 72 160 100 Q165 128 140 145" stroke="rgba(255,200,200,0.7)" strokeWidth="12" fill="none" strokeLinecap="round"/>
+      <path d="M50 90 Q80 58 130 72 Q162 85 165 112" stroke="rgba(255,220,220,0.5)" strokeWidth="8" fill="none" strokeLinecap="round"/>
+      <path d="M115 75 Q155 90 168 125 Q178 155 155 175 Q130 192 100 188 Q68 185 48 165 Q28 145 30 118 Q32 95 55 82" fill="rgba(120,0,0,0.35)"/>
+      <ellipse cx="75" cy="72" rx="22" ry="14" fill="rgba(255,255,255,0.12)" transform="rotate(-25 75 72)"/>
+    </svg>
+  )
+}
 
 // ── crypto fingerprint — SHA-256 of certId + courseId + uid slice ──
 async function generateFingerprint(certId, courseId, uidSlice) {
@@ -256,13 +279,11 @@ export default function VerifyCertificatePage() {
     <div className="min-h-screen bg-[#080808]">
       {/* top nav */}
       <div className="border-b border-white/[.05] bg-[rgba(8,8,8,.98)] px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-[#E5181B] rounded-[6px] flex items-center justify-center font-[Montserrat] font-black text-[0.62rem] text-white tracking-wide">
-            CTO
-          </div>
+        <div className="flex items-center gap-3">
+          <CTOLogo size={36} />
           <div>
-            <div className="font-[Montserrat] font-black text-[0.72rem] tracking-widest text-white uppercase">
-              Access <span className="text-[#E5181B]">Forum</span> University
+            <div className="font-[Montserrat] font-black text-[0.78rem] tracking-widest text-white uppercase">
+              CTO <span className="text-[#E5181B]">Access</span> Forum University
             </div>
             <div className="text-[0.58rem] text-gray-600 font-[Montserrat]">Certificate Verification Portal</div>
           </div>
