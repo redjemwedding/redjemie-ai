@@ -8,6 +8,7 @@ import DashboardPage from '@/pages/DashboardPage'
 import ForumPage from '@/pages/ForumPage'
 import PostPage from '@/pages/PostPage'
 import CoursesPage from '@/pages/CoursesPage'
+import MyCoursesPage from '@/pages/MyCoursesPage'
 import ResourcesPage from '@/pages/ResourcesPage'
 import EventsPage from '@/pages/EventsPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="forum/:ch"              element={<ForumPage />} />
         <Route path="forum/post/:postId"     element={<PostPage />} />
         <Route path="courses"                element={<CoursesPage />} />
+        <Route path="my-courses"             element={<MyCoursesPage />} />
         <Route path="resources"              element={<ResourcesPage />} />
         <Route path="events"                 element={<EventsPage />} />
         <Route path="profile"                element={<ProfilePage />} />
