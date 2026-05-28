@@ -82,7 +82,7 @@ export default function ForumPage() {
   const [loading, setLoading] = useState(true)
   const [search,  setSearch]  = useState('')
   const [showNew, setShowNew] = useState(false)
-  const [form,    setForm]    = useState({ channel: 'cloud', title: '', body: '', videoUrl: '', tags: '' })
+  const [form,    setForm]    = useState({ channel: 'cloud', title: '', body: '', videoUrl: '' })
   const [file,    setFile]    = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null)
   const [posting, setPosting] = useState(false)
@@ -148,7 +148,7 @@ export default function ForumPage() {
         fileName,
         fileType,
         videoUrl:   form.videoUrl || null,
-        tags:       form.tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10),
+        tags:       [],
         authorId:   profile.uid,
         authorName: profile.displayName,
         authorRole: profile.role,
@@ -162,7 +162,7 @@ export default function ForumPage() {
       })
       await updateDoc(doc(db, 'users', profile.uid), { posts: increment(1), xp: increment(5) })
       setShowNew(false)
-      setForm({ channel: 'cloud', title: '', body: '', videoUrl: '', tags: '' })
+      setForm({ channel: 'cloud', title: '', body: '', videoUrl: '' })
       setFile(null); setImagePreviewUrl(null); setUpPct(0)
       toast.success('Post published.')
       nav(`/forum/post/${postRef.id}`)
@@ -438,11 +438,7 @@ export default function ForumPage() {
                   <input value={form.videoUrl} onChange={ev => setForm(f => ({ ...f, videoUrl: ev.target.value }))}
                     placeholder="YouTube, Vimeo, or Google Drive link" type="url" className={ic} />
                 </div>
-                <div>
-                  <label className="block text-[0.68rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Tags (optional)</label>
-                  <input value={form.tags} onChange={ev => setForm(f => ({ ...f, tags: ev.target.value }))}
-                    placeholder="security, cloud, ai — comma separated" className={ic} />
-                </div>
+                {/* end of form fields */}
               </div>
             </div>
 
