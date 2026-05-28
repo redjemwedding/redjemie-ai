@@ -11,7 +11,8 @@ import {
 const NAV = [
   { to: 'dashboard',      label: 'Dashboard' },
   { to: 'forum',          label: 'Forum' },
-  { to: 'courses',        label: 'Courses' },
+  { to: 'courses',    label: 'Courses' },
+  { to: 'my-courses', label: 'My Courses' },
   { to: 'resources',      label: 'Resources' },
   { to: 'events',         label: 'Events' },
   { to: 'profile',        label: 'Profile' },
