@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
+import toast from 'react-hot-toast'
 
 export default function CertificatePage() {
   const { courseId }  = useParams()
@@ -270,7 +271,7 @@ export default function CertificatePage() {
       </div>
 
       {/* share + info */}
-      <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="mt-5 grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-4 text-center">
           <div className="font-[Montserrat] font-bold text-[0.8rem] mb-1">Certificate ID</div>
           <div className="font-[Montserrat] text-[0.68rem] text-[#FF4447] tracking-widest">{certId}</div>
@@ -280,11 +281,19 @@ export default function CertificatePage() {
           <div className="text-[0.72rem] text-gray-400">{dateStr}</div>
         </div>
         <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-4 text-center">
-          <div className="font-[Montserrat] font-bold text-[0.8rem] mb-1">Share</div>
-          <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/verify/${certId}`); alert('Link copied!') }}
+          <div className="font-[Montserrat] font-bold text-[0.8rem] mb-1">Verify</div>
+          <button onClick={() => { navigator.clipboard?.writeText(`https://university.redjemie.com/verify/${certId}`); toast.success('Link copied!') }}
             className="text-[0.7rem] text-[#FF4447] hover:underline font-[Montserrat]">
             Copy verification link
           </button>
+        </div>
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-4 text-center">
+          <div className="font-[Montserrat] font-bold text-[0.8rem] mb-1">LinkedIn</div>
+          <a href={`https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(course?.title || '')}&organizationName=CTO+Access+Forum+University&issueYear=${completedAt.getFullYear()}&issueMonth=${completedAt.getMonth()+1}&certUrl=${encodeURIComponent('https://university.redjemie.com/verify/'+certId)}&certId=${certId}`}
+            target="_blank" rel="noopener noreferrer"
+            className="text-[0.7rem] text-blue-400 hover:underline font-[Montserrat]">
+            Add to LinkedIn
+          </a>
         </div>
       </div>
 
