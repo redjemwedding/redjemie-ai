@@ -9,6 +9,8 @@ import ForumPage from '@/pages/ForumPage'
 import PostPage from '@/pages/PostPage'
 import CoursesPage from '@/pages/CoursesPage'
 import MyCoursesPage from '@/pages/MyCoursesPage'
+import CourseDetailPage from '@/pages/CourseDetailPage'
+import CoursePlayerPage from '@/pages/CoursePlayerPage'
 import CourseBuilderPage from '@/pages/CourseBuilderPage'
 import ResourcesPage from '@/pages/ResourcesPage'
 import EventsPage from '@/pages/EventsPage'
@@ -39,26 +41,28 @@ function AppRoutes() {
   return (
     <AppLayout>
       <Routes>
-        <Route index                           element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard"                element={<DashboardPage />} />
-        <Route path="forum"                    element={<ForumPage />} />
-        <Route path="forum/:ch"                element={<ForumPage />} />
-        <Route path="forum/post/:postId"       element={<PostPage />} />
-        <Route path="courses"                  element={<CoursesPage />} />
-        <Route path="my-courses"               element={<MyCoursesPage />} />
-        <Route path="resources"                element={<ResourcesPage />} />
-        <Route path="events"                   element={<EventsPage />} />
-        <Route path="profile"                  element={<ProfilePage />} />
-        <Route path="notifications"            element={<NotificationsPage />} />
-        <Route path="instructor/apply"         element={<InstructorApplyPage />} />
+        <Route index                                        element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard"                             element={<DashboardPage />} />
+        <Route path="forum"                                 element={<ForumPage />} />
+        <Route path="forum/:ch"                             element={<ForumPage />} />
+        <Route path="forum/post/:postId"                    element={<PostPage />} />
+        <Route path="courses"                               element={<CoursesPage />} />
+        <Route path="courses/:courseId"                     element={<CourseDetailPage />} />
+        <Route path="courses/:courseId/learn/:moduleId/:lessonId" element={<CoursePlayerPage />} />
+        <Route path="my-courses"                            element={<MyCoursesPage />} />
+        <Route path="resources"                             element={<ResourcesPage />} />
+        <Route path="events"                                element={<EventsPage />} />
+        <Route path="profile"                               element={<ProfilePage />} />
+        <Route path="notifications"                         element={<NotificationsPage />} />
+        <Route path="instructor/apply"                      element={<InstructorApplyPage />} />
         {(isInstructor || isAdmin) && (
           <>
-            <Route path="courses/create"       element={<CourseBuilderPage />} />
-            <Route path="courses/:courseId/edit" element={<CourseBuilderPage />} />
+            <Route path="courses/create"                    element={<CourseBuilderPage />} />
+            <Route path="courses/:courseId/edit"            element={<CourseBuilderPage />} />
           </>
         )}
-        {isAdmin && <Route path="admin"        element={<AdminPage />} />}
-        <Route path="*"                        element={<Navigate to="dashboard" replace />} />
+        {isAdmin && <Route path="admin"                     element={<AdminPage />} />}
+        <Route path="*"                                     element={<Navigate to="dashboard" replace />} />
       </Routes>
     </AppLayout>
   )
