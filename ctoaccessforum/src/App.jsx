@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import AppLayout from '@/components/layout/AppLayout'
 import AuthPage from '@/pages/AuthPage'
@@ -30,17 +30,27 @@ function Spinner() {
   )
 }
 
-export default function App() {
+// ── Public verify page — completely outside auth ──────────────────
+function PublicRoutes() {
+  return (
+    <Routes>
+      <Route path="/verify/:certId" element={<VerifyCertificatePage />} />
+      <Route path="/*" element={<ProtectedApp />} />
+    </Routes>
+  )
+}
+
+// ── Protected app — needs auth ────────────────────────────────────
+function ProtectedApp() {
   return (
     <AuthProvider>
-      <Routes>
-        {/* ── PUBLIC — no auth required ── */}
-        <Route path="/verify/:certId" element={<VerifyCertificatePage />} />
-        {/* ── PROTECTED ── */}
-        <Route path="/*" element={<AppRoutes />} />
-      </Routes>
+      <AppRoutes />
     </AuthProvider>
   )
+}
+
+export default function App() {
+  return <PublicRoutes />
 }
 
 function AppRoutes() {
@@ -61,9 +71,9 @@ function AppRoutes() {
         <Route path="courses"                               element={<CoursesPage />} />
         <Route path="courses/:courseId"                     element={<CourseDetailPage />} />
         <Route path="courses/:courseId/learn/:moduleId/:lessonId" element={<CoursePlayerPage />} />
-        <Route path="courses/:courseId/certificate"             element={<CertificatePage />} />
-        <Route path="my-certificates"                           element={<MyCertificatesPage />} />
+        <Route path="courses/:courseId/certificate"         element={<CertificatePage />} />
         <Route path="my-courses"                            element={<MyCoursesPage />} />
+        <Route path="my-certificates"                       element={<MyCertificatesPage />} />
         <Route path="resources"                             element={<ResourcesPage />} />
         <Route path="events"                                element={<EventsPage />} />
         <Route path="profile"                               element={<ProfilePage />} />
