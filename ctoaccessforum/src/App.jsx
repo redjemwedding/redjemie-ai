@@ -12,6 +12,7 @@ import MyCoursesPage from '@/pages/MyCoursesPage'
 import CourseDetailPage from '@/pages/CourseDetailPage'
 import CoursePlayerPage from '@/pages/CoursePlayerPage'
 import CourseBuilderPage from '@/pages/CourseBuilderPage'
+import CertificatePage from '@/pages/CertificatePage'
 import ResourcesPage from '@/pages/ResourcesPage'
 import EventsPage from '@/pages/EventsPage'
 import ProfilePage from '@/pages/ProfilePage'
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="courses"                               element={<CoursesPage />} />
         <Route path="courses/:courseId"                     element={<CourseDetailPage />} />
         <Route path="courses/:courseId/learn/:moduleId/:lessonId" element={<CoursePlayerPage />} />
+        <Route path="courses/:courseId/certificate"             element={<CertificatePage />} />
         <Route path="my-courses"                            element={<MyCoursesPage />} />
         <Route path="resources"                             element={<ResourcesPage />} />
         <Route path="events"                                element={<EventsPage />} />
