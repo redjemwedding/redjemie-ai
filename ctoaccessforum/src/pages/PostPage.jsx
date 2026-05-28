@@ -264,7 +264,7 @@ export default function PostPage() {
   const [loading,  setLoading] = useState(true)
   const [replyTo,  setReplyTo] = useState(null)
   const [editing,  setEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === '1')
-  const [editForm, setEditForm]= useState({ title: '', body: '', tags: '' })
+  const [editForm, setEditForm]= useState({ title: '', body: '', channel: '' })
   const composerRef = useRef(null)
   const repliesEndRef = useRef(null)
 
@@ -276,7 +276,7 @@ export default function PostPage() {
         setPost(data)
         // pre-populate edit form if opened via ?edit=1
         if (new URLSearchParams(window.location.search).get('edit') === '1') {
-          setEditForm({ title: data.title || '', body: data.body || '', tags: (data.tags || []).join(', ') })
+          setEditForm({ title: data.title || '', body: data.body || '', channel: normalizeChannel(data.channel) })
         }
       } else { toast.error('Post not found'); nav(-1) }
       setLoading(false)
@@ -295,7 +295,7 @@ export default function PostPage() {
   }
 
   function startEdit() {
-    setEditForm({ title: post.title || '', body: post.body || '', tags: (post.tags || []).join(', ') })
+    setEditForm({ title: post.title || '', body: post.body || '', channel: normalizeChannel(post.channel) })
     setEditing(true)
   }
 
@@ -305,10 +305,10 @@ export default function PostPage() {
       await updateDoc(doc(db, 'posts', postId), {
         title:     editForm.title.trim(),
         body:      editForm.body.trim(),
-        tags:      editForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+        channel:   editForm.channel,
         updatedAt: serverTimestamp(),
       })
-      setPost(p => ({ ...p, title: editForm.title.trim(), body: editForm.body.trim() }))
+      setPost(p => ({ ...p, title: editForm.title.trim(), body: editForm.body.trim(), channel: editForm.channel }))
       setEditing(false)
       toast.success('Post updated.')
     } catch (err) { toast.error(err.message) }
@@ -385,12 +385,24 @@ export default function PostPage() {
         {/* title — editable */}
         {editing ? (
           <div className="flex flex-col gap-3 mb-5">
-            <input value={editForm.title} onChange={ev => setEditForm(f => ({ ...f, title: ev.target.value }))}
-              className={`${ic} text-[1rem] font-black font-[Montserrat]`} placeholder="Post title…" />
-            <textarea value={editForm.body} onChange={ev => setEditForm(f => ({ ...f, body: ev.target.value }))}
-              rows={6} maxLength={10000} className={`${ic} text-[0.85rem] resize-y`} placeholder="Content…" />
-            <input value={editForm.tags} onChange={ev => setEditForm(f => ({ ...f, tags: ev.target.value }))}
-              className={`${ic} text-[0.78rem]`} placeholder="Tags: security, cloud, ai" />
+            <div>
+              <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Title</label>
+              <input value={editForm.title} onChange={ev => setEditForm(f => ({ ...f, title: ev.target.value }))}
+                className={`${ic} text-[1rem] font-black font-[Montserrat]`} placeholder="Post title…" />
+            </div>
+            <div>
+              <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Channel</label>
+              <select value={editForm.channel} onChange={ev => setEditForm(f => ({ ...f, channel: ev.target.value }))} className={ic}>
+                {CHANNELS.filter(c => c.id !== 'all').map(c => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[0.67rem] font-bold text-gray-500 mb-1.5 uppercase tracking-wide font-[Montserrat]">Content</label>
+              <textarea value={editForm.body} onChange={ev => setEditForm(f => ({ ...f, body: ev.target.value }))}
+                rows={6} maxLength={10000} className={`${ic} text-[0.85rem] resize-y`} placeholder="Content…" />
+            </div>
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)}
                 className="px-4 py-2 bg-white/[.04] border border-white/[.08] text-gray-400 text-[0.74rem] font-bold font-[Montserrat] rounded-[7px]">
