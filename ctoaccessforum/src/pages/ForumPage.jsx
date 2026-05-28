@@ -337,6 +337,12 @@ export default function ForumPage() {
                     className="flex items-center gap-1.5 hover:text-gray-300 transition-colors">
                     Reply ({p.replies || 0})
                   </button>
+                  {(p.authorId === profile?.uid) && (
+                    <button onClick={() => nav(`/forum/post/${p.id}?edit=1`)}
+                      className="hover:text-gray-300 transition-colors">
+                      Edit
+                    </button>
+                  )}
                   <button
                     onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/forum/post/${p.id}`); toast.success('Link copied.') }}
                     className="ml-auto hover:text-gray-300 transition-colors">
