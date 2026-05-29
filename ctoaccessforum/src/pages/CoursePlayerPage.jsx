@@ -408,20 +408,26 @@ export default function CoursePlayerPage() {
       // write public certificate record on completion
       if (newPct === 100) {
         const certId = `CTOU-${courseId.slice(0,6).toUpperCase()}-${profile.uid.slice(0,6).toUpperCase()}`
-        const { setDoc: sd, doc: d2 } = await import('firebase/firestore')
-        await sd(d2(db, 'certificates', certId), {
-          certId,
-          uid:            profile.uid,
-          courseId,
-          courseTitle:    course?.title || '',
-          category:       course?.category || '',
-          level:          course?.level || '',
-          instructorName: course?.instructorName || '',
-          recipientName:  profile.displayName,
-          completedAt:    serverTimestamp(),
-          issuedBy:       'CTO Access Forum University',
-          verifyUrl:      `https://university.redjemie.com/verify/${certId}`,
-        }, { merge: true })
+        try {
+          await setDoc(doc(db, 'certificates', certId), {
+            certId,
+            uid:            profile.uid,
+            courseId,
+            courseTitle:    course?.title          || '',
+            category:       course?.category       || '',
+            level:          course?.level          || '',
+            instructorName: course?.instructorName || 'CTO Access Forum',
+            recipientName:  profile.displayName    || '',
+            recipientTitle: profile.title          || '',
+            completedAt:    serverTimestamp(),
+            issuedBy:       'CTO Access Forum University',
+            verifyUrl:      `https://university.redjemie.com/verify/${certId}`,
+            createdAt:      serverTimestamp(),
+          }, { merge: true })
+          console.log('Certificate registered:', certId)
+        } catch (e) {
+          console.warn('Certificate registration failed:', e.message)
+        }
       }
       setProgress(p => ({ ...p, completedLessons: newCompleted }))
       toast.success(newPct === 100 ? 'Course complete! Certificate ready.' : 'Lesson complete!')
