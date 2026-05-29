@@ -228,18 +228,94 @@ function QuizPlayer({ quiz, moduleId, courseId, onPassed }) {
   }
 
   if (submitted && score !== null) return (
-    <div className={`rounded-[12px] border p-5 ${passed ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
-      <div className={`font-[Montserrat] font-black text-[1.3rem] mb-1 ${passed ? 'text-green-400' : 'text-red-400'}`}>
+    <div className={`rounded-[14px] border p-6 text-center ${passed ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
+      {/* icon */}
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${passed ? 'bg-green-900/30 border border-green-500/25' : 'bg-red-900/30 border border-red-500/25'}`}>
+        {passed
+          ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+      </div>
+
+      {/* result */}
+      <div className={`font-[Montserrat] font-black text-[1.4rem] mb-1 ${passed ? 'text-green-400' : 'text-red-400'}`}>
         {passed ? 'Quiz Passed!' : 'Not Passed'}
       </div>
-      <p className="text-[0.78rem] text-gray-400 mb-3">
-        You scored {score.pct}% ({score.earned}/{score.total} points). Passing: {quiz.passingScore || 70}%.
+      <div className={`font-[Montserrat] font-black text-[2.5rem] mb-1 ${passed ? 'text-green-300' : 'text-red-300'}`}>
+        {score.pct}%
+      </div>
+      <p className="text-[0.78rem] text-gray-400 mb-1">
+        {score.earned} out of {score.total} points correct
       </p>
-      {!passed && (
-        <button onClick={() => { setSubmitted(false); setAnswers({}); setScore(null) }}
-          className="px-4 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.74rem] font-bold font-[Montserrat] rounded-[7px] transition-colors">
-          Try Again
-        </button>
+      <p className="text-[0.72rem] text-gray-600 mb-5">
+        Passing score: {quiz.passingScore || 70}% {passed ? '— Well done!' : '— Keep studying!'}
+      </p>
+
+      {/* score breakdown */}
+      <div className="bg-[#111] border border-white/[.06] rounded-[10px] p-3 mb-5 text-left">
+        <div className="text-[0.65rem] font-bold tracking-[.08em] uppercase text-gray-600 font-[Montserrat] mb-2">Score Breakdown</div>
+        <div className="h-2 bg-white/[.06] rounded-full overflow-hidden mb-2">
+          <div className={`h-full rounded-full transition-all ${passed ? 'bg-green-500' : 'bg-red-500'}`} style={{ width: `${score.pct}%` }} />
+        </div>
+        <div className="flex justify-between text-[0.65rem] text-gray-500">
+          <span>Your score: <span className="font-bold text-white">{score.pct}%</span></span>
+          <span>Pass mark: <span className="font-bold text-white">{quiz.passingScore || 70}%</span></span>
+        </div>
+      </div>
+
+      {/* actions */}
+      <div className="flex flex-col sm:flex-row gap-2 justify-center">
+        {!passed && (
+          <button onClick={() => { setSubmitted(false); setAnswers({}); setScore(null); setPassed(false) }}
+            className="px-5 py-2.5 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.78rem] font-bold font-[Montserrat] rounded-[8px] transition-colors">
+            Retake Quiz
+          </button>
+        )}
+        {passed && (
+          <button onClick={() => onPassed?.()}
+            className="px-6 py-2.5 bg-green-700 hover:bg-green-600 text-white text-[0.78rem] font-bold font-[Montserrat] rounded-[8px] transition-colors flex items-center gap-2">
+            Continue →
+          </button>
+        )}
+        {quiz.showAnswers && (
+          <button
+            onClick={() => {
+              // toggle answer review — just scroll down
+              document.getElementById('answer-review')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="px-5 py-2.5 bg-white/[.04] border border-white/[.08] text-gray-300 text-[0.78rem] font-bold font-[Montserrat] rounded-[8px] hover:bg-white/[.07] transition-colors">
+            Review Answers
+          </button>
+        )}
+      </div>
+
+      {/* answer review */}
+      {quiz.showAnswers && (
+        <div id="answer-review" className="mt-5 pt-5 border-t border-white/[.05] text-left">
+          <div className="text-[0.67rem] font-bold uppercase text-gray-500 font-[Montserrat] mb-3">Answer Review</div>
+          {(quiz.questions || []).filter(q => q.type !== 'essay').map((q, qi) => {
+            const ans     = answers[q.id]
+            const correct = q.type === 'mcq'  ? ans === q.correct
+                          : q.type === 'tf'   ? ans === q.correct
+                          : q.type === 'fill' ? (ans?.trim().toLowerCase() === q.answer?.trim().toLowerCase())
+                          : false
+            return (
+              <div key={q.id} className={`mb-2.5 p-3 rounded-[8px] border ${correct ? 'bg-green-900/10 border-green-500/15' : 'bg-red-900/10 border-red-500/15'}`}>
+                <div className="flex items-start gap-2">
+                  <span className={`text-[0.65rem] font-bold flex-shrink-0 mt-0.5 ${correct ? 'text-green-400' : 'text-red-400'}`}>{correct ? '✓' : '✗'}</span>
+                  <div>
+                    <p className="text-[0.76rem] font-medium mb-0.5">Q{qi+1}: {q.question}</p>
+                    {q.type === 'mcq' && q.options && (
+                      <p className="text-[0.68rem] text-gray-400">
+                        Correct: <span className="text-green-400">{q.options[q.correct]}</span>
+                      </p>
+                    )}
+                    {q.explanation && <p className="text-[0.68rem] text-gray-500 italic mt-0.5">{q.explanation}</p>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
@@ -612,13 +688,26 @@ export default function CoursePlayerPage() {
           )}
 
           {courseComplete && !showQuiz && (
-            <div className="mt-4 bg-green-900/10 border border-green-500/20 rounded-[12px] p-4 text-center">
-              <div className="font-[Montserrat] font-black text-green-400 text-[1rem] mb-1">Course Complete!</div>
-              <p className="text-[0.75rem] text-gray-400 mb-3">Congratulations! Your certificate is ready.</p>
-              <button onClick={() => nav(`/courses/${courseId}/certificate`)}
-                className="px-5 py-2 bg-green-700 hover:bg-green-600 text-white text-[0.76rem] font-bold font-[Montserrat] rounded-[8px] transition-colors">
-                Get Certificate
-              </button>
+            <div className="mt-4 bg-gradient-to-br from-green-900/20 to-[rgba(212,175,55,0.08)] border border-green-500/25 rounded-[14px] p-6 text-center">
+              <div className="text-4xl mb-3">🎓</div>
+              <div className="font-[Montserrat] font-black text-green-400 text-[1.2rem] mb-1">Course Complete!</div>
+              <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-1">
+                Congratulations <span className="text-white font-semibold">{profile?.displayName}</span>!
+              </p>
+              <p className="text-[0.74rem] text-gray-500 mb-4">
+                You have successfully completed <span className="text-white">{course?.title}</span>.
+                Your certificate is ready.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <button onClick={() => nav(`/courses/${courseId}/certificate`)}
+                  className="px-6 py-2.5 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.78rem] font-bold font-[Montserrat] rounded-[8px] transition-colors">
+                  Get My Certificate
+                </button>
+                <button onClick={() => nav('/my-courses')}
+                  className="px-6 py-2.5 bg-white/[.04] border border-white/[.08] text-gray-300 text-[0.78rem] font-bold font-[Montserrat] rounded-[8px] hover:bg-white/[.07] transition-colors">
+                  My Courses
+                </button>
+              </div>
             </div>
           )}
         </div>
