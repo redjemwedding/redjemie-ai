@@ -97,20 +97,23 @@ export default function VerifyCertificatePage() {
       const result = await signInWithPopup(auth, provider)
       const user   = result.user
       setVerifier({ email: user.email, name: user.displayName, photo: user.photoURL })
-      await signOut(auth) // sign out immediately — we only needed identity
       setStage('loading')
+      // ── do ALL Firestore reads BEFORE signing out ──
       await verifyCert(user.email, user.displayName)
+      // ── sign out AFTER everything is fetched ──
+      await signOut(auth)
     } catch (err) {
       console.error(err)
       setSigningIn(false)
-      if (err.code === 'auth/popup-closed-by-user') return
+      try { await signOut(auth) } catch (_) {}
+      if (err.code === 'auth/popup-closed-by-user') { setStage('gate'); return }
       setStage('invalid')
     }
   }
 
   async function verifyCert(verifierEmail, verifierName) {
     try {
-      // fetch certificate record
+      // certificates has public read — works even when signed out
       const certSnap = await getDoc(doc(db, 'certificates', certId))
       if (!certSnap.exists()) { setStage('invalid'); return }
 
@@ -124,39 +127,45 @@ export default function VerifyCertificatePage() {
       const completedAt = cd.completedAt?.toDate ? cd.completedAt.toDate() : new Date()
       const expiresAt   = new Date(completedAt); expiresAt.setFullYear(expiresAt.getFullYear() + 1)
       if (Date.now() > expiresAt.getTime()) {
-        setCertData({ ...cd, completedAt, expiresAt })
+        setCertData({ cert: cd, completedAt, expiresAt,
+          user:   { displayName: cd.recipientName, title: cd.recipientTitle, id: cd.uid },
+          course: { title: cd.courseTitle, category: cd.category, level: cd.level, instructorName: cd.instructorName },
+        })
         setStage('expired'); return
       }
 
-      // fetch user + course
-      const [userSnap, courseSnap] = await Promise.all([
-        getDoc(doc(db, 'users', cd.uid)),
-        getDoc(doc(db, 'courses', cd.courseId)),
-      ])
-
-      const user   = userSnap.exists()   ? { id: cd.uid, ...userSnap.data() }         : { displayName: cd.recipientName, id: cd.uid }
-      const course = courseSnap.exists() ? { id: cd.courseId, ...courseSnap.data() }   : { title: cd.courseTitle }
+      // enrich with user + course — user is still signed in at this point
+      let user   = { displayName: cd.recipientName, title: cd.recipientTitle, id: cd.uid }
+      let course = { title: cd.courseTitle, category: cd.category, level: cd.level, instructorName: cd.instructorName }
+      try {
+        const [userSnap, courseSnap] = await Promise.all([
+          getDoc(doc(db, 'users',   cd.uid)),
+          getDoc(doc(db, 'courses', cd.courseId)),
+        ])
+        if (userSnap.exists())   user   = { id: cd.uid,      ...userSnap.data() }
+        if (courseSnap.exists()) course = { id: cd.courseId, ...courseSnap.data() }
+      } catch (e) {
+        console.warn('Enrich failed, using cert fields:', e.message)
+      }
 
       // generate fingerprint
       const fp = await generateFingerprint(certId, cd.courseId, cd.uid.slice(0,6).toUpperCase())
       setFingerprint(fp)
 
-      // log verification — write to certificates/{certId}/verifications subcollection
+      // log verification audit
       const now = new Date()
       setVerifiedAt(now)
       try {
-        await setDoc(doc(db, 'certificates', certId, 'verifications', verifierEmail.replace('@','_at_').replace(/\./g,'_')), {
-          verifierEmail,
-          verifierName,
-          verifiedAt: serverTimestamp(),
+        const safeEmail = verifierEmail.replace(/[@.]/g, '_')
+        await setDoc(doc(db, 'certificates', certId, 'verifications', safeEmail), {
+          verifierEmail, verifierName,
+          verifiedAt:    serverTimestamp(),
           certId,
           recipientName: cd.recipientName,
-          courseTitle: cd.courseTitle,
+          courseTitle:   cd.courseTitle,
         }, { merge: true })
-        // also update cert doc with verification count
         await updateDoc(doc(db, 'certificates', certId), {
-          verificationCount: arrayUnion(verifierEmail),
-          lastVerifiedAt:    serverTimestamp(),
+          lastVerifiedAt: serverTimestamp(),
         })
       } catch (e) { console.warn('Log verification:', e.message) }
 
