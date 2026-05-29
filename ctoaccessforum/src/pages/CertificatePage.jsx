@@ -55,13 +55,13 @@ async function registerCertificate({ certId, uid, courseId, course, profile, com
 export default function CertificatePage() {
   const { courseId }  = useParams()
   const nav           = useNavigate()
-  const { profile }   = useAuth()
+  const { profile, isAdmin } = useAuth()
   const certRef       = useRef(null)
   const [course,     setCourse]     = useState(null)
   const [progress,   setProgress]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [generating, setGenerating] = useState(false)
-  const [registered, setRegistered] = useState(false)
+  const [regStatus, setRegStatus] = useState('idle') // idle | registering | done | error
 
   useEffect(() => {
     if (!courseId || !profile?.uid) return
@@ -74,19 +74,31 @@ export default function CertificatePage() {
       setCourse(courseData)
       setProgress(progressData)
 
-      // ── auto-register certificate so verify link works ──────────
-      if (courseData && progressData?.completedAt) {
+      // ── register certificate so verify link works ──────────────
+      if (courseData) {
         const cId = `CTOU-${courseId.slice(0,6).toUpperCase()}-${profile.uid.slice(0,6).toUpperCase()}`
-        // check if already registered
-        const existing = await getDoc(doc(db, 'certificates', cId))
-        if (!existing.exists()) {
-          await registerCertificate({
-            certId: cId, uid: profile.uid, courseId,
-            course: courseData, profile,
-            completedAt: progressData.completedAt,
-          })
+        setRegStatus('registering')
+        try {
+          await setDoc(doc(db, 'certificates', cId), {
+            certId:         cId,
+            uid:            profile.uid,
+            courseId,
+            courseTitle:    courseData.title          || '',
+            category:       courseData.category       || '',
+            level:          courseData.level          || '',
+            instructorName: courseData.instructorName || 'CTO Access Forum',
+            recipientName:  profile.displayName       || '',
+            recipientTitle: profile.title             || '',
+            completedAt:    progressData?.completedAt || serverTimestamp(),
+            issuedBy:       'CTO Access Forum University',
+            verifyUrl:      `https://university.redjemie.com/verify/${cId}`,
+            createdAt:      serverTimestamp(),
+          }, { merge: true })
+          setRegStatus('done')
+        } catch (e) {
+          console.error('Cert registration error:', e)
+          setRegStatus('error')
         }
-        setRegistered(true)
       }
       setLoading(false)
     })
@@ -101,7 +113,7 @@ export default function CertificatePage() {
   const totalLessons = course?.modules?.reduce((a,m) => a + (m.lessons?.length||0), 0) || 0
   const totalMin     = course?.modules?.reduce((a,m) => a + (m.lessons||[]).reduce((b,l) => b+(Number(l.duration)||0),0),0) || 0
   const durationStr  = totalMin >= 60 ? `${Math.round(totalMin/60)} Hours of Learning` : `${totalLessons} Lessons Completed`
-  const isComplete   = (progress?.completedLessons?.length||0) >= totalLessons && totalLessons > 0
+  const isComplete   = isAdmin || (progress?.completedLessons?.length||0) >= totalLessons && totalLessons > 0
 
   async function downloadPDF() {
     setGenerating(true)
@@ -367,7 +379,40 @@ export default function CertificatePage() {
           { label:'Certificate ID',  value: <span className="font-mono text-[0.62rem] text-[#D4AF37] break-all">{certId}</span> },
           { label:'Date Issued',     value: <span className="text-[0.68rem] text-gray-400">{dateStr}</span> },
           { label:'Add to LinkedIn', value: <a href={linkedInUrl} target="_blank" rel="noopener noreferrer" className="text-[0.7rem] text-blue-400 hover:underline font-[Montserrat] font-bold">Add Credential →</a> },
-          { label:'Verify & Share',  value: <button onClick={() => { navigator.clipboard?.writeText(verifyUrl); toast.success('Link copied!') }} className="text-[0.7rem] text-[#E5181B] hover:underline font-[Montserrat] font-bold">Copy Link</button> },
+          { label:'Verify & Share', value: (
+            <div className="flex flex-col gap-1.5 items-center">
+              <button onClick={() => { navigator.clipboard?.writeText(verifyUrl); toast.success('Copied!') }}
+                className="text-[0.7rem] text-[#E5181B] hover:underline font-[Montserrat] font-bold">
+                Copy Link
+              </button>
+              <span className={`text-[0.6rem] font-[Montserrat] ${regStatus === 'done' ? 'text-green-400' : regStatus === 'error' ? 'text-red-400' : regStatus === 'registering' ? 'text-amber-400' : 'text-gray-600'}`}>
+                {regStatus === 'done'        ? '✓ Registered in system'
+                 : regStatus === 'error'     ? '✗ Registration failed — try again'
+                 : regStatus === 'registering' ? '⟳ Registering…'
+                 : 'Not yet registered'}
+              </span>
+              {regStatus === 'error' && (
+                <button onClick={async () => {
+                  setRegStatus('registering')
+                  try {
+                    await setDoc(doc(db, 'certificates', certId), {
+                      certId, uid: profile.uid, courseId,
+                      courseTitle: course?.title || '', category: course?.category || '',
+                      level: course?.level || '', instructorName: course?.instructorName || '',
+                      recipientName: profile.displayName || '', recipientTitle: profile.title || '',
+                      completedAt: progress?.completedAt || serverTimestamp(),
+                      issuedBy: 'CTO Access Forum University',
+                      verifyUrl, createdAt: serverTimestamp(),
+                    }, { merge: true })
+                    setRegStatus('done')
+                    toast.success('Certificate registered!')
+                  } catch (e) { setRegStatus('error'); toast.error(e.message) }
+                }} className="text-[0.65rem] text-amber-400 hover:underline font-[Montserrat]">
+                  Retry Registration
+                </button>
+              )}
+            </div>
+          )},
         ].map(s => (
           <div key={s.label} className="bg-[#111] border border-white/[.06] rounded-[12px] p-4 text-center">
             <div className="font-[Montserrat] font-bold text-[0.72rem] text-gray-500 mb-1.5">{s.label}</div>
