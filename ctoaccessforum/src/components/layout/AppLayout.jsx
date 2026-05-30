@@ -107,13 +107,12 @@ export default function AppLayout({ children }) {
         </button>
 
         {/* logo */}
-        <button onClick={() => navTo('dashboard')} className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-7 h-7 bg-[#E5181B] rounded-[6px] flex items-center justify-center font-[Montserrat] font-black text-[0.58rem] text-white tracking-wide">
-            CTO
-          </div>
-          <span className="hidden sm:block font-[Montserrat] font-black text-[0.68rem] tracking-widest text-white uppercase">
-            Access <span className="text-[#E5181B]">Forum</span>
-          </span>
+        <button onClick={() => navTo('dashboard')} className="flex items-center flex-shrink-0">
+          <img
+            src="https://www.redjemie.com/cafu-logo.png"
+            alt="CTO Access Forum University"
+            className="h-8 w-auto object-contain"
+          />
         </button>
 
         {/* desktop nav */}
