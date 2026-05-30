@@ -11,14 +11,12 @@ export default function AuthPage() {
   const [attempts,    setAttempts]    = useState(0)
   const [lockedUntil, setLockedUntil] = useState(0)
 
-  // Use refs for input values to avoid re-renders on every keystroke
   const nameRef    = useRef('')
   const emailRef   = useRef('')
   const passRef    = useRef('')
   const codeRef    = useRef('')
   const resetRef   = useRef('')
 
-  // Track display values for controlled inputs
   const [nameVal,  setNameVal]  = useState('')
   const [emailVal, setEmailVal] = useState('')
   const [passVal,  setPassVal]  = useState('')
@@ -89,7 +87,7 @@ export default function AuthPage() {
   const GBtn = ({label='Continue with Google'}) => (
     <button type="button" onClick={handleGoogle} disabled={loading}
       className={`${bc} bg-white/[.04] border border-white/[.08] text-white hover:bg-white/[.07] flex items-center justify-center gap-2.5`}>
-      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7z"/></svg>
       {label}
     </button>
   )
@@ -113,10 +111,17 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#080808] p-5">
       <div className="w-full max-w-[420px]">
+
+        {/* ── LOGO ── */}
         <div className="text-center mb-8 animate-fadeUp">
-          <div className="w-12 h-12 bg-[#E5181B] rounded-[10px] flex items-center justify-center font-[Montserrat] font-black text-sm text-white mx-auto mb-4">CTO</div>
-          <div className="font-[Montserrat] text-xl font-black tracking-wide">ACCESS <span className="text-[#E5181B]">FORUM</span></div>
-          <div className="text-[0.52rem] font-bold tracking-[.22em] text-gray-500 uppercase mt-1">University Platform</div>
+          <img
+            src="https://www.redjemie.com/cafu-logo.png"
+            alt="CTO Access Forum University"
+            className="h-14 w-auto object-contain mx-auto mb-4"
+          />
+          <div className="text-[0.52rem] font-bold tracking-[.22em] text-gray-500 uppercase">
+            University Platform
+          </div>
         </div>
 
         <div className="bg-[#161616] border border-white/[.06] rounded-[18px] p-8 red-topline animate-fadeUp" style={{boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
