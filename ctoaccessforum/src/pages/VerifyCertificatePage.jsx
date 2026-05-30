@@ -19,24 +19,11 @@ function formatDate(ts) {
 
 function CTOLogo({ size = 40 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
-      <defs>
-        <radialGradient id="vg1" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#FF6B6B"/>
-          <stop offset="50%" stopColor="#E5181B"/>
-          <stop offset="100%" stopColor="#8B0000"/>
-        </radialGradient>
-      </defs>
-      <circle cx="100" cy="105" r="85" fill="url(#vg1)"/>
-      <rect x="88" y="18" width="10" height="14" rx="2" fill="#FF4444"/>
-      <rect x="102" y="16" width="10" height="14" rx="2" fill="#E5181B"/>
-      <rect x="116" y="20" width="10" height="14" rx="2" fill="#CC1010"/>
-      <rect x="74" y="22" width="10" height="14" rx="2" fill="#FF5555"/>
-      <path d="M40 75 Q70 45 120 60 Q155 72 160 100 Q165 128 140 145" stroke="rgba(255,200,200,0.75)" strokeWidth="12" fill="none" strokeLinecap="round"/>
-      <path d="M50 90 Q80 58 130 72 Q162 85 165 112" stroke="rgba(255,220,220,0.5)" strokeWidth="8" fill="none" strokeLinecap="round"/>
-      <path d="M115 75 Q155 90 168 125 Q178 155 155 175 Q130 192 100 188 Q68 185 48 165 Q28 145 30 118 Q32 95 55 82" fill="rgba(120,0,0,0.35)"/>
-      <ellipse cx="75" cy="72" rx="22" ry="14" fill="rgba(255,255,255,0.14)" transform="rotate(-25 75 72)"/>
-    </svg>
+    <img
+      src="https://www.redjemie.com/cafu-logo.png"
+      alt="CTO Access Forum University"
+      style={{ height: size, width: 'auto', objectFit: 'contain' }}
+    />
   )
 }
 
@@ -263,10 +250,10 @@ export default function VerifyCertificatePage() {
         {/* Security badges */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'20px' }}>
           {[
-            { icon:' ', t:'Blockchain-Grade ID',   d:'Certificate ID is cryptographically signed' },
+            { icon:'🔐', t:'Blockchain-Grade ID',   d:'Certificate ID is cryptographically signed' },
             { icon:'✅', t:'Integrity Verified',     d:'Certificate data has not been tampered' },
-            { icon:' ', t:'Issued by CTO Forum',   d:'Recognized professional certification' },
-            { icon:' ', t:'1-Year Validity',        d:`Valid until ${formatDate(expiresAt)}` },
+            { icon:'🏛️', t:'Issued by CTO Forum',   d:'Recognized professional certification' },
+            { icon:'📅', t:'1-Year Validity',        d:`Valid until ${formatDate(expiresAt)}` },
           ].map(b => (
             <div key={b.t} style={{ background:'#0d0d0d', border:'1px solid rgba(255,255,255,.05)', borderRadius:'10px', padding:'12px 14px', display:'flex', gap:'10px', alignItems:'flex-start' }}>
               <span style={{ fontSize:'18px', flexShrink:0 }}>{b.icon}</span>
