@@ -7,24 +7,11 @@ import toast from 'react-hot-toast'
 
 function CTOLogo({ size = 52 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="cg1" cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#FF6B6B"/>
-          <stop offset="50%" stopColor="#E5181B"/>
-          <stop offset="100%" stopColor="#8B0000"/>
-        </radialGradient>
-      </defs>
-      <circle cx="100" cy="105" r="85" fill="url(#cg1)"/>
-      <rect x="88" y="18" width="10" height="14" rx="2" fill="#FF4444"/>
-      <rect x="102" y="16" width="10" height="14" rx="2" fill="#E5181B"/>
-      <rect x="116" y="20" width="10" height="14" rx="2" fill="#CC1010"/>
-      <rect x="74" y="22" width="10" height="14" rx="2" fill="#FF5555"/>
-      <path d="M40 75 Q70 45 120 60 Q155 72 160 100 Q165 128 140 145" stroke="rgba(255,200,200,0.75)" strokeWidth="12" fill="none" strokeLinecap="round"/>
-      <path d="M50 90 Q80 58 130 72 Q162 85 165 112" stroke="rgba(255,220,220,0.5)" strokeWidth="8" fill="none" strokeLinecap="round"/>
-      <path d="M115 75 Q155 90 168 125 Q178 155 155 175 Q130 192 100 188 Q68 185 48 165 Q28 145 30 118 Q32 95 55 82" fill="rgba(120,0,0,0.35)"/>
-      <ellipse cx="75" cy="72" rx="22" ry="14" fill="rgba(255,255,255,0.14)" transform="rotate(-25 75 72)"/>
-    </svg>
+    <img
+      src="https://www.redjemie.com/cafu-logo.png"
+      alt="CTO Access Forum University"
+      style={{ height: size, width: 'auto', objectFit: 'contain' }}
+    />
   )
 }
 
