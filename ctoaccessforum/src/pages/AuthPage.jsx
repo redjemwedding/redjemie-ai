@@ -1,132 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
+import RequestModal from '@/pages/RequestModal'
 import { useAuth } from '@/context/AuthContext'
-import { db } from '@/lib/firebase'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import toast from 'react-hot-toast'
-
-// ── Request Access Modal ──────────────────────────────────────────────
-function RequestAccessModal({ onClose }) {
-  const [loading, setLoading] = useState(false)
-  const [sent, setSent]       = useState(false)
-  const [form, setForm]       = useState({ name:'', phone:'', email:'', message:'' })
-  const [drag, setDrag]       = useState(false)
-  const [verified, setVerified] = useState(false)
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  async function handleSubmit() {
-    if (!form.name || !form.email || !form.phone) { toast.error('Please fill in all required fields'); return }
-    if (!verified) { toast.error('Please complete the security check'); return }
-    setLoading(true)
-    try {
-      await addDoc(collection(db, 'membershipRequests'), {
-        ...form,
-        service: 'CTO Access Forum University — Membership Request',
-        status:  'pending',
-        createdAt: serverTimestamp(),
-      })
-      setSent(true)
-    } catch(e) {
-      toast.error('Failed to send. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const ic = "w-full bg-[#1a1a1a] border border-white/[.07] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)', backdropFilter:'blur(8px)'}}>
-      <div className="bg-[#111] border border-white/[.07] rounded-[20px] w-full max-w-[460px] overflow-hidden shadow-2xl animate-fadeUp">
-        {/* top line */}
-        <div style={{height:'3px', background:'linear-gradient(90deg,#E5181B,#FF6B6B)'}}/>
-
-        <div className="p-7">
-          {!sent ? (
-            <>
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h2 className="font-[Montserrat] font-black text-[1.05rem] text-white">Request Access</h2>
-                  <p className="text-[0.72rem] text-gray-500 mt-1">We'll reply to your email within 24 hours.</p>
-                </div>
-                <button onClick={onClose} className="text-gray-600 hover:text-white transition-colors text-xl leading-none mt-0.5">✕</button>
-              </div>
-
-              <div className="flex flex-col gap-3.5">
-                <div>
-                  <label className="text-[0.68rem] font-[Montserrat] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Full Name *</label>
-                  <input type="text" placeholder="Your full name" className={ic}
-                    value={form.name} onChange={e => set('name', e.target.value)}/>
-                </div>
-                <div>
-                  <label className="text-[0.68rem] font-[Montserrat] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Phone Number *</label>
-                  <input type="tel" placeholder="+971 XX XXX XXXX" className={ic}
-                    value={form.phone} onChange={e => set('phone', e.target.value)}/>
-                </div>
-                <div>
-                  <label className="text-[0.68rem] font-[Montserrat] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Email Address *</label>
-                  <input type="email" placeholder="your@email.com" className={ic}
-                    value={form.email} onChange={e => set('email', e.target.value)}/>
-                </div>
-                <div>
-                  <label className="text-[0.68rem] font-[Montserrat] font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Message</label>
-                  <textarea rows={3} placeholder="Tell us about yourself and why you'd like to join..."
-                    className={`${ic} resize-none`}
-                    value={form.message} onChange={e => set('message', e.target.value)}/>
-                </div>
-
-                {/* Security drag check */}
-                <div className="bg-[#1a1a1a] border border-white/[.07] rounded-[10px] p-3">
-                  <p className="text-[0.68rem] font-[Montserrat] font-bold text-gray-500 uppercase tracking-wide mb-2">Security Check *</p>
-                  {!verified ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-9 bg-[#222] rounded-lg relative overflow-hidden border border-white/[.06]">
-                        <div className="absolute inset-0 flex items-center px-3">
-                          <div className="h-px flex-1 border-t border-dashed border-white/10"/>
-                          <div className="w-8 h-7 bg-[#2a2a2a] border border-white/10 rounded-md flex items-center justify-center text-[0.7rem] ml-auto">□</div>
-                        </div>
-                      </div>
-                      <button
-                        className="text-[0.72rem] text-[#E5181B] font-[Montserrat] font-bold hover:underline"
-                        onClick={() => setVerified(true)}>
-                        ✓ I'm human
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-green-400">
-                      <span className="text-lg">✓</span>
-                      <span className="text-[0.75rem] font-[Montserrat] font-bold">Verified</span>
-                    </div>
-                  )}
-                </div>
-
-                <button onClick={handleSubmit} disabled={loading}
-                  className="w-full py-2.5 bg-[#E5181B] hover:bg-[#C01215] text-white font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] transition-all disabled:opacity-50 mt-1 flex items-center justify-center gap-2">
-                  {loading
-                    ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                    : <>Send Request →</>}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-6">
-              <div className="text-5xl mb-4">✅</div>
-              <h2 className="font-[Montserrat] font-black text-[1.05rem] text-white mb-2">Request Sent!</h2>
-              <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-2">
-                Thank you, <strong className="text-white">{form.name}</strong>. We've received your membership request.
-              </p>
-              <p className="text-[0.73rem] text-gray-500 mb-6">We'll review your request and reply to <strong className="text-white">{form.email}</strong> within 24 hours.</p>
-              <button onClick={onClose}
-                className="w-full py-2.5 bg-white/[.05] border border-white/[.08] text-white font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] transition-all hover:bg-white/[.08]">
-                Close
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── Main AuthPage ─────────────────────────────────────────────────────
 export default function AuthPage() {
@@ -207,7 +82,7 @@ export default function AuthPage() {
 
   return (
     <>
-      {showRequest && <RequestAccessModal onClose={() => setShowRequest(false)} />}
+      {showRequest && <RequestModal onClose={() => setShowRequest(false)} />}
 
       <div className="min-h-screen flex items-center justify-center bg-[#080808] p-5">
         <div className="w-full max-w-[420px]">
