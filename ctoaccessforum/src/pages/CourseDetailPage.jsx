@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  doc, getDoc, collection, getDocs,
+  doc, getDoc, collection, getDocs, setDoc,
   updateDoc, arrayUnion, increment, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -31,14 +31,47 @@ export default function CourseDetailPage() {
     if (!profile?.uid) return
     setEnrolling(true)
     try {
+      const price           = course?.isFree ? 0 : (course?.price || 0)
+      const instructorShare = Math.round(price * 0.6 * 100) / 100
+      const platformShare   = Math.round(price * 0.4 * 100) / 100
+      const enrollmentId    = `${profile.uid}_${courseId}`
+
+      // 1. Write enrollment record
+      await setDoc(doc(db, 'enrollments', enrollmentId), {
+        enrollmentId,
+        courseId,
+        courseTitle:      course?.title || '',
+        category:         course?.category || '',
+        level:            course?.level || '',
+        instructorId:     course?.instructorId || '',
+        instructorName:   course?.instructorName || '',
+        studentId:        profile.uid,
+        studentName:      profile.displayName || '',
+        studentEmail:     profile.email || '',
+        price,
+        instructorShare,
+        platformShare,
+        isFree:           course?.isFree || price === 0,
+        enrolledAt:       serverTimestamp(),
+        status:           'active',
+        completedAt:      null,
+        payoutStatus:     price === 0 ? 'n/a' : 'pending',
+      }, { merge: true })
+
+      // 2. Update user enrolledCourses + XP
       await updateDoc(doc(db, 'users', profile.uid), {
         enrolledCourses: arrayUnion(courseId),
         xp: increment(10),
       })
+
+      // 3. Update course enrollment count
+      await updateDoc(doc(db, 'courses', courseId), {
+        enrollmentCount: increment(1),
+      })
+
       toast.success('Enrolled! Starting your first lesson…')
-      // navigate to first lesson
-      const firstModule  = course?.modules?.[0]
-      const firstLesson  = firstModule?.lessons?.[0]
+      const firstModule = course?.modules?.[0]
+      const firstLesson = firstModule?.lessons?.[0]
       if (firstModule && firstLesson) {
         nav(`/courses/${courseId}/learn/${firstModule.id}/${firstLesson.id}`)
       }
