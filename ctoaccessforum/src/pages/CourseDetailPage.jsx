@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  doc, getDoc, collection, getDocs, setDoc,
+  doc, getDoc, collection, getDocs, setDoc, addDoc,
   updateDoc, arrayUnion, increment, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -10,13 +10,272 @@ import { parseVideoUrl } from '@/lib/utils'
 import { notify } from '@/lib/notifications'
 import toast from 'react-hot-toast'
 
+// ── Payment Modal ─────────────────────────────────────────────────────
+function PaymentModal({ course, profile, onClose, onSubmitted }) {
+  const [method,     setMethod]     = useState('')
+  const [reference,  setReference]  = useState('')
+  const [submitting, setSubmitting]  = useState(false)
+  const [settings,   setSettings]   = useState(null)
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'payment')).then(snap => {
+      setSettings(snap.exists() ? snap.data() : {
+        bankName: '', accountName: '', accountNumber: '', iban: '',
+        instapayId: '+971 506 328 968',
+        whatsapp: '+971506328968',
+        email: 'info@redjemie.com',
+        notes: ''
+      })
+    }).catch(() => setSettings({
+      bankName: '', accountName: '', accountNumber: '', iban: '',
+      instapayId: '+971 506 328 968',
+      whatsapp: '+971506328968',
+      email: 'info@redjemie.com',
+      notes: ''
+    }))
+  }, [])
+
+  async function handleSubmit() {
+    if (!method) { toast.error('Please select a payment method'); return }
+    setSubmitting(true)
+    try {
+      await addDoc(collection(db, 'pendingPayments'), {
+        courseId:      course.id,
+        courseTitle:   course.title,
+        price:         course.price,
+        studentId:     profile.uid,
+        studentName:   profile.displayName,
+        studentEmail:  profile.email,
+        method,
+        reference:     reference.trim(),
+        status:        'pending',
+        submittedAt:   serverTimestamp(),
+        instructorId:  course.instructorId || '',
+        instructorName: course.instructorName || '',
+      })
+      onSubmitted()
+    } catch(e) { toast.error(e.message) }
+    finally { setSubmitting(false) }
+  }
+
+  const methods = [
+    { id: 'bank',     label: 'Bank Transfer' },
+    { id: 'instapay', label: 'InstaPay'       },
+    { id: 'whatsapp', label: 'WhatsApp'       },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background:'rgba(0,0,0,.85)', backdropFilter:'blur(8px)' }}>
+      <div className="bg-[#111] border border-white/[.07] rounded-[20px] w-full max-w-[460px] overflow-hidden shadow-2xl"
+        style={{ animation:'fadeUp .2s ease' }}>
+        <div style={{ height:'3px', background:'linear-gradient(90deg,#E5181B,#FF6B6B)' }}/>
+        <div className="p-7">
+
+          {/* header */}
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h2 className="font-[Montserrat] font-black text-[1.05rem] text-white">Complete Your Enrollment</h2>
+              <p className="text-[0.72rem] text-gray-500 mt-1">Manual payment — activated within 24 hours.</p>
+            </div>
+            <button onClick={onClose} className="text-gray-600 hover:text-white transition-colors text-xl">✕</button>
+          </div>
+
+          {/* course + amount */}
+          <div className="bg-[#1a1a1a] border border-white/[.06] rounded-[12px] p-4 mb-5">
+            <div className="text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1">Course</div>
+            <div className="font-[Montserrat] font-black text-[0.9rem] text-white mb-3 leading-snug">{course.title}</div>
+            <div className="flex items-center justify-between border-t border-white/[.05] pt-3">
+              <span className="text-[0.72rem] text-gray-500">Amount Due</span>
+              <span className="font-[Montserrat] font-black text-[1.3rem] text-[#E5181B]">AED {course.price}</span>
+            </div>
+          </div>
+
+          {/* payment method */}
+          <div className="mb-5">
+            <div className="text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-2">Pay Via</div>
+            <div className="grid grid-cols-3 gap-2">
+              {methods.map(m => (
+                <button key={m.id} onClick={() => setMethod(m.id)}
+                  className={`py-2.5 rounded-[10px] text-[0.75rem] font-bold font-[Montserrat] border transition-all ${
+                    method === m.id
+                      ? 'bg-[#E5181B]/10 border-[#E5181B]/40 text-[#E5181B]'
+                      : 'bg-[#1a1a1a] border-white/[.06] text-gray-400 hover:text-white hover:border-white/[.12]'
+                  }`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* bank details — shown based on method */}
+          {method === 'bank' && settings && (
+            <div className="bg-[#0d0d0d] border border-blue-500/20 rounded-[12px] p-4 mb-5">
+              <div className="text-[0.65rem] font-bold font-[Montserrat] text-blue-400 uppercase tracking-wider mb-3">Bank Transfer Details</div>
+              {settings.bankName || settings.accountName || settings.accountNumber || settings.iban ? (
+                <div className="flex flex-col gap-2">
+                  {[
+                    { l: 'Bank Name',      v: settings.bankName },
+                    { l: 'Account Name',   v: settings.accountName },
+                    { l: 'Account Number', v: settings.accountNumber },
+                    { l: 'IBAN',           v: settings.iban },
+                    { l: 'Reference',      v: `CAFU-${profile?.displayName?.split(' ')[0]?.toUpperCase() || 'STUDENT'}` },
+                  ].filter(r => r.v).map(r => (
+                    <div key={r.l} className="flex items-center justify-between">
+                      <span className="text-[0.68rem] text-gray-500">{r.l}</span>
+                      <span className="text-[0.75rem] font-bold font-[Montserrat] text-white cursor-pointer"
+                        onClick={() => { navigator.clipboard?.writeText(r.v); toast.success(`${r.l} copied!`) }}>
+                        {r.v}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="text-[0.62rem] text-gray-600 mt-2">Tap any value to copy.</p>
+                </div>
+              ) : (
+                <p className="text-[0.75rem] text-gray-500">Bank details not set yet. Please contact us directly.</p>
+              )}
+              {settings.notes && (
+                <div className="mt-3 pt-3 border-t border-white/[.05]">
+                  <p className="text-[0.72rem] text-amber-300/70">{settings.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {method === 'instapay' && settings && (
+            <div className="bg-[#0d0d0d] border border-green-500/20 rounded-[12px] p-4 mb-5">
+              <div className="text-[0.65rem] font-bold font-[Montserrat] text-green-400 uppercase tracking-wider mb-3">InstaPay Details</div>
+              <div className="flex flex-col gap-2">
+                {[
+                  { l: 'InstaPay ID / Mobile', v: settings.instapayId || settings.whatsapp },
+                  { l: 'Account Name',         v: settings.accountName },
+                  { l: 'Reference',            v: `CAFU-${profile?.displayName?.split(' ')[0]?.toUpperCase() || 'STUDENT'}` },
+                ].filter(r => r.v).map(r => (
+                  <div key={r.l} className="flex items-center justify-between">
+                    <span className="text-[0.68rem] text-gray-500">{r.l}</span>
+                    <span className="text-[0.75rem] font-bold font-[Montserrat] text-white cursor-pointer"
+                      onClick={() => { navigator.clipboard?.writeText(r.v); toast.success(`${r.l} copied!`) }}>
+                      {r.v}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[0.62rem] text-gray-600 mt-2">Tap any value to copy.</p>
+            </div>
+          )}
+
+          {method === 'whatsapp' && settings && (
+            <div className="bg-[#0d0d0d] border border-green-500/20 rounded-[12px] p-4 mb-5">
+              <div className="text-[0.65rem] font-bold font-[Montserrat] text-green-400 uppercase tracking-wider mb-3">WhatsApp Payment</div>
+              <p className="text-[0.78rem] text-gray-300 leading-relaxed mb-3">
+                Send <strong className="text-white">AED {course.price}</strong> via WhatsApp Pay or contact us to arrange payment.
+              </p>
+              <a href={`https://wa.me/${(settings.whatsapp||'971506328968').replace(/[^0-9]/g,'')}?text=Hi, I'd like to enroll in ${encodeURIComponent(course.title)} (AED ${course.price}). My name is ${encodeURIComponent(profile?.displayName || '')}.`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-green-900/20 border border-green-500/25 text-green-300 font-[Montserrat] font-bold text-[0.8rem] rounded-[10px] hover:bg-green-900/30 transition-all">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.118.552 4.105 1.518 5.829L0 24l6.335-1.518A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.372l-.359-.214-3.723.976.993-3.631-.234-.373A9.818 9.818 0 1112 21.818z"/>
+                </svg>
+                Open WhatsApp Chat
+              </a>
+            </div>
+          )}
+
+          {/* contact info */}
+          <div className="bg-[#0d0d0d] border border-white/[.05] rounded-[12px] p-4 mb-5">
+            <div className="text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-3">
+              After Payment, Send Proof To
+            </div>
+            <div className="flex flex-col gap-2">
+              <a href="https://wa.me/971506328968" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2.5 text-[0.78rem] text-gray-300 hover:text-white transition-colors">
+                <div className="w-7 h-7 rounded-[7px] bg-green-900/20 border border-green-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-green-400">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.118.552 4.105 1.518 5.829L0 24l6.335-1.518A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.372l-.359-.214-3.723.976.993-3.631-.234-.373A9.818 9.818 0 1112 21.818z"/>
+                  </svg>
+                </div>
+                +971 506 328 968
+              </a>
+              <a href="mailto:info@redjemie.com"
+                className="flex items-center gap-2.5 text-[0.78rem] text-gray-300 hover:text-white transition-colors">
+                <div className="w-7 h-7 rounded-[7px] bg-red-900/20 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#E5181B]">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                </div>
+                info@redjemie.com
+              </a>
+            </div>
+          </div>
+
+          {/* reference */}
+          <div className="mb-5">
+            <label className="text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5 block">
+              Transaction Reference (optional)
+            </label>
+            <input type="text" placeholder="e.g. TXN123456 or last 4 digits"
+              value={reference} onChange={e => setReference(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-white/[.07] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"/>
+          </div>
+
+          <button onClick={handleSubmit} disabled={submitting || !method}
+            className="w-full py-3 bg-[#E5181B] hover:bg-[#C01215] disabled:opacity-40 text-white font-[Montserrat] font-black text-[0.85rem] rounded-[12px] transition-all flex items-center justify-center gap-2">
+            {submitting
+              ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+              : 'I Have Paid — Submit for Approval →'}
+          </button>
+
+          <p className="text-center text-[0.65rem] text-gray-600 mt-3">
+            Your enrollment will be activated within 24 hours after payment verification.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Payment Submitted Confirmation ────────────────────────────────────
+function PaymentSubmitted({ course, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background:'rgba(0,0,0,.85)', backdropFilter:'blur(8px)' }}>
+      <div className="bg-[#111] border border-white/[.07] rounded-[20px] w-full max-w-[400px] overflow-hidden shadow-2xl text-center">
+        <div style={{ height:'3px', background:'linear-gradient(90deg,#E5181B,#FF6B6B)' }}/>
+        <div className="p-8">
+          <div className="w-14 h-14 rounded-full bg-green-900/20 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h2 className="font-[Montserrat] font-black text-[1.1rem] text-white mb-2">Payment Submitted!</h2>
+          <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-2">
+            Thank you! Your payment proof has been submitted for <strong className="text-white">{course.title}</strong>.
+          </p>
+          <p className="text-[0.73rem] text-gray-500 mb-6">
+            Your enrollment will be activated within <strong className="text-white">24 hours</strong> once we verify your payment.
+          </p>
+          <button onClick={onClose}
+            className="w-full py-2.5 bg-white/[.05] border border-white/[.08] text-white font-[Montserrat] font-bold text-[0.82rem] rounded-[10px] hover:bg-white/[.08] transition-all">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CourseDetailPage() {
   const { courseId } = useParams()
   const nav = useNavigate()
   const { profile } = useAuth()
-  const [course,   setCourse]   = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [enrolling, setEnrolling] = useState(false)
+  const [course,      setCourse]      = useState(null)
+  const [loading,     setLoading]     = useState(true)
+  const [enrolling,   setEnrolling]   = useState(false)
+  const [showPayment, setShowPayment] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const enrolled = profile?.enrolledCourses?.includes(courseId)
 
@@ -30,6 +289,11 @@ export default function CourseDetailPage() {
 
   async function handleEnroll() {
     if (!profile?.uid) return
+    // paid course → show payment modal
+    if (!course?.isFree && course?.price > 0) {
+      setShowPayment(true)
+      return
+    }
     setEnrolling(true)
     try {
       const price           = course?.isFree ? 0 : (course?.price || 0)
@@ -116,6 +380,22 @@ export default function CourseDetailPage() {
 
   return (
     <div className="max-w-screen-lg mx-auto">
+      {/* Payment modals */}
+      {showPayment && !showSuccess && (
+        <PaymentModal
+          course={course}
+          profile={profile}
+          onClose={() => setShowPayment(false)}
+          onSubmitted={() => { setShowPayment(false); setShowSuccess(true) }}
+        />
+      )}
+      {showSuccess && (
+        <PaymentSubmitted
+          course={course}
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
+
       <button onClick={() => nav('/courses')}
         className="text-[0.73rem] text-gray-500 hover:text-white mb-4 transition-colors font-[Montserrat]">
         ← Back to Courses
