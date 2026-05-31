@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   collection, query, orderBy, onSnapshot, getDocs,
-  updateDoc, deleteDoc, doc, setDoc, serverTimestamp, where
+  updateDoc, deleteDoc, doc, setDoc, serverTimestamp, where, arrayUnion, increment
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
@@ -365,9 +365,12 @@ export default function AdminPage() {
   const [courses,      setCourses]      = useState([])
   const [allCourses,   setAllCourses]   = useState([])
   const [codes,        setCodes]        = useState([])
-  const [enrollments,  setEnrollments]  = useState([])
-  const [enrolLoading, setEnrolLoading] = useState(false)
-  const [enrolSearch,  setEnrolSearch]  = useState('')
+  const [enrollments,   setEnrollments]   = useState([])
+  const [enrolLoading,  setEnrolLoading]  = useState(false)
+  const [enrolSearch,   setEnrolSearch]   = useState('')
+  const [pendingPay,    setPendingPay]    = useState([])
+  const [settings,      setSettings]      = useState(null)
+  const [savingSettings, setSavingSettings] = useState(false)
   const [genCount,     setGenCount]     = useState(1)
   const [genPlan,      setGenPlan]      = useState('free')
   const [search,       setSearch]       = useState('')
@@ -402,6 +405,16 @@ export default function AdminPage() {
         }),
       onSnapshot(query(collection(db, 'enrollments'), orderBy('enrolledAt', 'desc')),
         s => setEnrollments(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+        () => {}),
+      onSnapshot(query(collection(db, 'pendingPayments'), orderBy('submittedAt', 'desc')),
+        s => setPendingPay(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+        () => {}),
+      onSnapshot(doc(db, 'settings', 'payment'),
+        snap => setSettings(snap.exists() ? snap.data() : {
+          bankName: '', accountName: '', accountNumber: '', iban: '',
+          instapayId: '', whatsapp: '+971506328968', email: 'info@redjemie.com',
+          notes: ''
+        }),
         () => {}),
     ]
     return () => unsubs.forEach(u => u())
@@ -538,13 +551,15 @@ export default function AdminPage() {
   ]
 
   const TABS = [
-    { id: 'users',       label: 'Users',           count: users.length },
-    { id: 'queue',       label: 'Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
-    { id: 'apps',        label: 'Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
-    { id: 'courses',     label: 'Course Review',   count: pendingCourses },
-    { id: 'enrollments', label: 'Enrollments',     count: enrollments.length },
-    { id: 'revenue',     label: 'Revenue',         count: 0 },
-    { id: 'codes',       label: 'Invite Codes',    count: unusedCodes.length },
+    { id: 'users',       label: 'Users',            count: users.length },
+    { id: 'queue',       label: 'Approval Queue',   count: queue.filter(u => u.status === 'pending').length },
+    { id: 'apps',        label: 'Instructor Apps',  count: apps.filter(a => a.status === 'pending').length },
+    { id: 'courses',     label: 'Course Review',    count: pendingCourses },
+    { id: 'payments',    label: 'Pending Payments', count: pendingPay.filter(p => p.status === 'pending').length },
+    { id: 'enrollments', label: 'Enrollments',      count: enrollments.length },
+    { id: 'revenue',     label: 'Revenue',          count: 0 },
+    { id: 'codes',       label: 'Invite Codes',     count: unusedCodes.length },
+    { id: 'settings',    label: '⚙ Settings',       count: 0 },
   ]
 
   return (
@@ -816,6 +831,105 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── PENDING PAYMENTS TAB ── */}
+      {tab === 'payments' && (
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
+
+          {/* summary */}
+          <div className="grid grid-cols-3 gap-3 p-4 border-b border-white/[.05]">
+            {[
+              { l: 'Pending',  v: pendingPay.filter(p=>p.status==='pending').length,  c: 'text-amber-400' },
+              { l: 'Approved', v: pendingPay.filter(p=>p.status==='approved').length, c: 'text-green-400' },
+              { l: 'Rejected', v: pendingPay.filter(p=>p.status==='rejected').length, c: 'text-red-400'   },
+            ].map(s => (
+              <div key={s.l} className="bg-[#0d0d0d] border border-white/[.05] rounded-[10px] p-3 text-center">
+                <div className={`font-[Montserrat] font-black text-[1.4rem] ${s.c}`}>{s.v}</div>
+                <div className="text-[0.6rem] text-gray-500 font-[Montserrat] font-bold uppercase tracking-wide mt-0.5">{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-[0.75rem]">
+              <thead>
+                <tr className="border-b border-white/[.05]">
+                  {['Student','Course','Amount','Method','Reference','Submitted','Status','Action'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pendingPay.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-600 text-[0.8rem]">No payment submissions yet</td></tr>
+                ) : pendingPay.map(p => (
+                  <tr key={p.id} className="border-b border-white/[.03] hover:bg-white/[.02] transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-white">{p.studentName||'—'}</div>
+                      <div className="text-[0.65rem] text-gray-500">{p.studentEmail||''}</div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-300 max-w-[160px] leading-snug">{p.courseTitle||'—'}</td>
+                    <td className="px-4 py-3 text-green-400 font-[Montserrat] font-bold">AED {p.price}</td>
+                    <td className="px-4 py-3 text-gray-300 capitalize">{p.method||'—'}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-[0.7rem]">{p.reference||'—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-[0.7rem] whitespace-nowrap">
+                      {p.submittedAt?.toDate?.()?.toLocaleDateString('en-AE',{day:'2-digit',month:'short',year:'numeric'})||'—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full font-[Montserrat] ${
+                        p.status==='approved' ? 'bg-green-900/30 text-green-300 border border-green-500/25' :
+                        p.status==='rejected' ? 'bg-red-900/30 text-red-300 border border-red-500/25' :
+                        'bg-amber-900/30 text-amber-300 border border-amber-500/25'}`}>
+                        {p.status||'pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                // approve payment → enroll student
+                                await updateDoc(doc(db,'pendingPayments',p.id), { status:'approved', approvedAt: serverTimestamp() })
+                                const enrollmentId = `${p.studentId}_${p.courseId}`
+                                await setDoc(doc(db,'enrollments',enrollmentId), {
+                                  enrollmentId, courseId:p.courseId, courseTitle:p.courseTitle,
+                                  instructorId:p.instructorId||'', instructorName:p.instructorName||'',
+                                  studentId:p.studentId, studentName:p.studentName, studentEmail:p.studentEmail,
+                                  price:p.price, instructorShare:Math.round(p.price*.6*100)/100,
+                                  platformShare:Math.round(p.price*.4*100)/100,
+                                  isFree:false, enrolledAt:serverTimestamp(), status:'active',
+                                  completedAt:null, payoutStatus:'pending',
+                                }, { merge:true })
+                                await updateDoc(doc(db,'users',p.studentId), { enrolledCourses: arrayUnion(p.courseId), xp: increment(10) })
+                                await updateDoc(doc(db,'courses',p.courseId), { enrollmentCount: increment(1) })
+                                toast.success(`${p.studentName} enrolled in ${p.courseTitle}`)
+                              } catch(e) { toast.error(e.message) }
+                            }}
+                            className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-green-900/20 text-green-300 border border-green-500/20 hover:bg-green-900/30 transition-colors">
+                            Approve
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await updateDoc(doc(db,'pendingPayments',p.id), { status:'rejected', rejectedAt: serverTimestamp() })
+                                toast.success('Payment rejected')
+                              } catch(e) { toast.error(e.message) }
+                            }}
+                            className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-red-900/20 text-red-300 border border-red-500/20 hover:bg-red-900/30 transition-colors">
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── ENROLLMENTS TAB ── */}
       {tab === 'enrollments' && (
         <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
@@ -990,6 +1104,116 @@ export default function AdminPage() {
                 </table>
               </div>
             </div>
+          </div>
+        )
+      })()}
+
+      {/* ── SETTINGS TAB ── */}
+      {tab === 'settings' && settings && (() => {
+        const [form, setForm] = useState({ ...settings })
+        const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+        const ic = "w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
+
+        async function saveSettings() {
+          setSavingSettings(true)
+          try {
+            await setDoc(doc(db, 'settings', 'payment'), { ...form, updatedAt: serverTimestamp() })
+            toast.success('Payment settings saved!')
+          } catch(e) { toast.error(e.message) }
+          finally { setSavingSettings(false) }
+        }
+
+        return (
+          <div className="flex flex-col gap-5 max-w-[640px]">
+
+            {/* Bank Transfer */}
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-[8px] bg-blue-900/20 border border-blue-500/20 flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                </div>
+                <h3 className="font-[Montserrat] font-black text-[0.88rem]">Bank Transfer Details</h3>
+              </div>
+              <div className="flex flex-col gap-3">
+                {[
+                  { k:'bankName',      l:'Bank Name',      p:'e.g. Emirates NBD' },
+                  { k:'accountName',   l:'Account Name',   p:'e.g. RJ Global Technologies' },
+                  { k:'accountNumber', l:'Account Number', p:'e.g. 1234567890' },
+                  { k:'iban',          l:'IBAN',           p:'e.g. AE07 0331 2345 6789 0123 456' },
+                ].map(f => (
+                  <div key={f.k}>
+                    <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">{f.l}</label>
+                    <input type="text" placeholder={f.p} value={form[f.k] || ''} onChange={e => set(f.k, e.target.value)} className={ic}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* InstaPay */}
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-[8px] bg-green-900/20 border border-green-500/20 flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                </div>
+                <h3 className="font-[Montserrat] font-black text-[0.88rem]">InstaPay</h3>
+              </div>
+              <div>
+                <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">InstaPay ID / Mobile Number</label>
+                <input type="text" placeholder="+971 XX XXX XXXX" value={form.instapayId || ''} onChange={e => set('instapayId', e.target.value)} className={ic}/>
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-[8px] bg-red-900/20 border border-red-500/20 flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E5181B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                </div>
+                <h3 className="font-[Montserrat] font-black text-[0.88rem]">Contact for Payment Proof</h3>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">WhatsApp Number</label>
+                  <input type="text" placeholder="+971 506 328 968" value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} className={ic}/>
+                </div>
+                <div>
+                  <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+                  <input type="email" placeholder="info@redjemie.com" value={form.email || ''} onChange={e => set('email', e.target.value)} className={ic}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-[8px] bg-amber-900/20 border border-amber-500/20 flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <h3 className="font-[Montserrat] font-black text-[0.88rem]">Additional Notes for Students</h3>
+              </div>
+              <textarea rows={3}
+                placeholder="e.g. Please include your full name as payment reference..."
+                value={form.notes || ''} onChange={e => set('notes', e.target.value)}
+                className={`${ic} resize-none`}/>
+            </div>
+
+            <button onClick={saveSettings} disabled={savingSettings}
+              className="w-full py-3 bg-[#E5181B] hover:bg-[#C01215] disabled:opacity-40 text-white font-[Montserrat] font-black text-[0.88rem] rounded-[12px] transition-all flex items-center justify-center gap-2">
+              {savingSettings
+                ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                : 'Save Payment Settings'}
+            </button>
+            <p className="text-center text-[0.65rem] text-gray-600">
+              Changes are live immediately — students will see updated details on their next enrollment.
+            </p>
           </div>
         )
       })()}
