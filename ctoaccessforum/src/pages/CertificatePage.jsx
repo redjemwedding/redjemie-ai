@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
@@ -15,6 +15,149 @@ function CTOLogo({ size = 52 }) {
   )
 }
 
+// ── Certificate Payment Modal ─────────────────────────────────────────
+function CertPaymentModal({ course, certPrice, profile, settings, onClose, onSubmitted }) {
+  const [method,     setMethod]    = useState('')
+  const [reference,  setReference] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const methods = [
+    { id: 'bank',     label: 'Bank Transfer' },
+    { id: 'instapay', label: 'InstaPay'       },
+    { id: 'whatsapp', label: 'WhatsApp'       },
+  ]
+
+  async function handleSubmit() {
+    if (!method) { toast.error('Please select a payment method'); return }
+    setSubmitting(true)
+    try {
+      await addDoc(collection(db, 'certPayments'), {
+        courseId:     course.id,
+        courseTitle:  course.title,
+        certPrice,
+        studentId:    profile.uid,
+        studentName:  profile.displayName,
+        studentEmail: profile.email,
+        method,
+        reference:    reference.trim(),
+        status:       'pending',
+        submittedAt:  serverTimestamp(),
+        type:         'certificate',
+      })
+      onSubmitted()
+    } catch(e) { toast.error(e.message) }
+    finally { setSubmitting(false) }
+  }
+
+  const ic = "w-full bg-[#1a1a1a] border border-white/[.07] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      style={{ background:'rgba(0,0,0,.88)', backdropFilter:'blur(10px)' }}>
+      <div className="bg-[#111] border border-white/[.07] rounded-[20px] w-full max-w-[460px] overflow-hidden shadow-2xl my-auto">
+        <div style={{ height:'3px', background:'linear-gradient(90deg,#E5181B,#FF6B6B)' }}/>
+        <div className="p-7">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h2 className="font-[Montserrat] font-black text-[1.05rem] text-white">Certificate Payment</h2>
+              <p className="text-[0.72rem] text-gray-500 mt-1">Issued within 24 hours after verification.</p>
+            </div>
+            <button onClick={onClose} className="text-gray-600 hover:text-white transition-colors text-xl">✕</button>
+          </div>
+
+          {/* course + amount */}
+          <div className="bg-[#1a1a1a] border border-white/[.06] rounded-[12px] p-4 mb-5">
+            <div className="text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1">Certificate For</div>
+            <div className="font-[Montserrat] font-black text-[0.9rem] text-white mb-3 leading-snug">{course.title}</div>
+            <div className="flex items-center justify-between border-t border-white/[.05] pt-3">
+              <span className="text-[0.72rem] text-gray-500">Certificate Fee</span>
+              <span className="font-[Montserrat] font-black text-[1.3rem] text-[#E5181B]">AED {certPrice}</span>
+            </div>
+          </div>
+
+          {/* method */}
+          <div className="mb-4">
+            <div className="text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-2">Pay Via</div>
+            <div className="grid grid-cols-3 gap-2">
+              {methods.map(m => (
+                <button key={m.id} onClick={() => setMethod(m.id)}
+                  className={`py-2.5 rounded-[10px] text-[0.75rem] font-bold font-[Montserrat] border transition-all ${
+                    method === m.id
+                      ? 'bg-[#E5181B]/10 border-[#E5181B]/40 text-[#E5181B]'
+                      : 'bg-[#1a1a1a] border-white/[.06] text-gray-400 hover:text-white'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* bank details */}
+          {method === 'bank' && settings && (
+            <div className="bg-[#0d0d0d] border border-blue-500/20 rounded-[12px] p-4 mb-4">
+              <div className="text-[0.65rem] font-bold font-[Montserrat] text-blue-400 uppercase tracking-wider mb-3">Bank Details</div>
+              <div className="flex flex-col gap-2">
+                {[
+                  { l:'Bank',    v: settings.bankName },
+                  { l:'Account', v: settings.accountName },
+                  { l:'IBAN',    v: settings.iban },
+                  { l:'Ref',     v: `CERT-${profile?.displayName?.split(' ')[0]?.toUpperCase()}` },
+                ].filter(r => r.v).map(r => (
+                  <div key={r.l} className="flex justify-between">
+                    <span className="text-[0.68rem] text-gray-500">{r.l}</span>
+                    <span className="text-[0.75rem] font-bold text-white cursor-pointer font-[Montserrat]"
+                      onClick={() => { navigator.clipboard?.writeText(r.v); toast.success('Copied!') }}>
+                      {r.v}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {method === 'instapay' && settings && (
+            <div className="bg-[#0d0d0d] border border-green-500/20 rounded-[12px] p-4 mb-4">
+              <div className="text-[0.65rem] font-bold font-[Montserrat] text-green-400 uppercase tracking-wider mb-2">InstaPay</div>
+              <div className="flex justify-between">
+                <span className="text-[0.68rem] text-gray-500">Mobile</span>
+                <span className="text-[0.75rem] font-bold text-white cursor-pointer font-[Montserrat]"
+                  onClick={() => { navigator.clipboard?.writeText(settings.instapayId||settings.whatsapp); toast.success('Copied!') }}>
+                  {settings.instapayId || settings.whatsapp}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {method === 'whatsapp' && settings && (
+            <div className="mb-4">
+              <a href={`https://wa.me/${(settings.whatsapp||'971506328968').replace(/[^0-9]/g,'')}?text=Hi, I'd like to pay for my certificate for ${encodeURIComponent(course.title)} (AED ${certPrice}). My name is ${encodeURIComponent(profile?.displayName||'')}.`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-green-900/20 border border-green-500/25 text-green-300 font-[Montserrat] font-bold text-[0.8rem] rounded-[10px] hover:bg-green-900/30 transition-all">
+                Open WhatsApp
+              </a>
+            </div>
+          )}
+
+          {/* reference */}
+          <div className="mb-5">
+            <label className="text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5 block">
+              Transaction Reference (optional)
+            </label>
+            <input type="text" placeholder="e.g. TXN123456"
+              value={reference} onChange={e => setReference(e.target.value)} className={ic}/>
+          </div>
+
+          <button onClick={handleSubmit} disabled={submitting || !method}
+            className="w-full py-3 bg-[#E5181B] hover:bg-[#C01215] disabled:opacity-40 text-white font-[Montserrat] font-black text-[0.85rem] rounded-[12px] transition-all flex items-center justify-center gap-2">
+            {submitting
+              ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+              : 'I Have Paid — Submit →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CertificatePage() {
   const { courseId }   = useParams()
   const nav            = useNavigate()
@@ -24,21 +167,35 @@ export default function CertificatePage() {
   const [progress,    setProgress]   = useState(null)
   const [loading,     setLoading]    = useState(true)
   const [generating,  setGenerating] = useState(false)
-  const [regStatus,   setRegStatus]  = useState('idle') // idle|registering|done|error
+  const [regStatus,   setRegStatus]  = useState('idle')
   const [regError,    setRegError]   = useState('')
+  const [certPaid,    setCertPaid]   = useState(false)
+  const [showCertPay, setShowCertPay] = useState(false)
+  const [certPaySent, setCertPaySent] = useState(false)
+  const [settings,    setSettings]   = useState(null)
 
   useEffect(() => {
     if (!courseId || !profile?.uid) return
     Promise.all([
       getDoc(doc(db, 'courses', courseId)),
       getDoc(doc(db, 'users', profile.uid, 'progress', courseId)),
-    ]).then(async ([courseSnap, progressSnap]) => {
-      const courseData   = courseSnap.exists()   ? { id: courseSnap.id,   ...courseSnap.data()   } : null
+      getDoc(doc(db, 'settings', 'payment')),
+      getDoc(doc(db, 'certPayments', `${profile.uid}_${courseId}`)),
+    ]).then(async ([courseSnap, progressSnap, settingsSnap, certPaySnap]) => {
+      const courseData   = courseSnap.exists()   ? { id: courseSnap.id, ...courseSnap.data() } : null
       const progressData = progressSnap.exists() ? progressSnap.data() : null
       setCourse(courseData)
       setProgress(progressData)
+      setSettings(settingsSnap.exists() ? settingsSnap.data() : {})
+      // cert is paid if: certFree, admin, already approved payment
+      if (
+        courseData?.certFree ||
+        isAdmin ||
+        (certPaySnap.exists() && certPaySnap.data().status === 'approved')
+      ) {
+        setCertPaid(true)
+      }
       setLoading(false)
-      // auto-register
       if (courseData && profile?.uid) {
         await forceRegister(courseData, progressData, profile)
       }
@@ -104,6 +261,9 @@ export default function CertificatePage() {
     finally { setGenerating(false) }
   }
 
+  const certPrice = course?.certPrice ?? 49
+  const needsCertPayment = !course?.certFree && !isAdmin && !certPaid && certPrice > 0
+
   if (loading) return (
     <div className="flex justify-center py-24">
       <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-[#E5181B] animate-spin" />
@@ -124,9 +284,9 @@ export default function CertificatePage() {
             className="px-4 py-2 bg-white/[.04] border border-white/[.08] text-white text-[0.76rem] font-bold font-[Montserrat] rounded-[8px] hover:bg-white/[.07] transition-colors">
             My Certificates
           </button>
-          <button onClick={downloadPDF} disabled={generating || !isComplete}
+          <button onClick={downloadPDF} disabled={generating || !isComplete || needsCertPayment}
             className="px-5 py-2 bg-[#E5181B] hover:bg-[#C01215] text-white text-[0.76rem] font-bold font-[Montserrat] rounded-[8px] disabled:opacity-50 transition-colors flex items-center gap-2">
-            {generating ? <><span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/><span>Generating…</span></> : 'Download PDF'}
+            {generating ? <><span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/><span>Generating…</span></> : needsCertPayment ? `Unlock — AED ${certPrice}` : 'Download PDF'}
           </button>
         </div>
       </div>
@@ -137,6 +297,62 @@ export default function CertificatePage() {
           <p className="text-[0.72rem] text-gray-500 mb-2">Complete all {totalLessons} lessons to unlock your certificate.</p>
           <button onClick={() => nav(`/courses/${courseId}`)} className="px-4 py-1.5 bg-amber-900/20 border border-amber-500/20 text-amber-300 text-[0.72rem] font-bold font-[Montserrat] rounded-[6px]">Continue Learning</button>
         </div>
+      )}
+
+      {/* ── Certificate Payment Gate ── */}
+      {isComplete && needsCertPayment && !showCertPay && !certPaySent && (
+        <div className="bg-[#111] border border-[#E5181B]/20 rounded-[16px] p-8 mb-5 text-center"
+          style={{ background: 'linear-gradient(135deg, rgba(229,24,27,.04), rgba(0,0,0,0))' }}>
+          <div className="text-4xl mb-4">🎓</div>
+          <h2 className="font-[Montserrat] font-black text-[1.2rem] text-white mb-2">
+            You've Completed the Course!
+          </h2>
+          <p className="text-[0.82rem] text-gray-400 leading-relaxed mb-2 max-w-[440px] mx-auto">
+            Congratulations on finishing <strong className="text-white">{course.title}</strong>.
+            Your verified certificate is ready to be issued.
+          </p>
+          <div className="inline-flex items-center gap-2 bg-[#E5181B]/10 border border-[#E5181B]/20 rounded-full px-5 py-2 mb-6">
+            <span className="font-[Montserrat] font-black text-[1.1rem] text-[#E5181B]">AED {certPrice}</span>
+            <span className="text-[0.72rem] text-gray-400">one-time certificate fee</span>
+          </div>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button onClick={() => setShowCertPay(true)}
+              className="px-8 py-3 bg-[#E5181B] hover:bg-[#C01215] text-white font-[Montserrat] font-black text-[0.85rem] rounded-[12px] transition-all">
+              Get My Certificate — AED {certPrice} →
+            </button>
+          </div>
+          <p className="text-[0.65rem] text-gray-600 mt-4">
+            Digitally verifiable · LinkedIn shareable · Valid 1 year
+          </p>
+        </div>
+      )}
+
+      {/* ── Certificate Payment Submitted ── */}
+      {isComplete && needsCertPayment && certPaySent && (
+        <div className="bg-[#111] border border-green-500/20 rounded-[16px] p-8 mb-5 text-center">
+          <div className="w-14 h-14 rounded-full bg-green-900/20 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h2 className="font-[Montserrat] font-black text-[1.1rem] text-white mb-2">Payment Submitted!</h2>
+          <p className="text-[0.78rem] text-gray-400 leading-relaxed mb-1">
+            Your certificate payment is being verified. It will be issued within <strong className="text-white">24 hours</strong>.
+          </p>
+          <p className="text-[0.72rem] text-gray-500">Check back here or visit My Certificates once approved.</p>
+        </div>
+      )}
+
+      {/* ── Cert Payment Modal ── */}
+      {showCertPay && (
+        <CertPaymentModal
+          course={course}
+          certPrice={certPrice}
+          profile={profile}
+          settings={settings}
+          onClose={() => setShowCertPay(false)}
+          onSubmitted={() => { setShowCertPay(false); setCertPaySent(true) }}
+        />
       )}
 
       {/* registration status bar */}
