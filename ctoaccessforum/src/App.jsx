@@ -23,6 +23,7 @@ import ProfilePage from '@/pages/ProfilePage'
 import AdminPage from '@/pages/AdminPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import InstructorApplyPage from '@/pages/InstructorApplyPage'
+import InstructorEarningsPage from '@/pages/InstructorEarningsPage'
 
 function Spinner() {
   return (
@@ -89,6 +90,7 @@ function AppRoutes() {
         <Route path="profile"                               element={<ProfilePage />} />
         <Route path="notifications"                         element={<NotificationsPage />} />
         <Route path="instructor/apply"                      element={<InstructorApplyPage />} />
+        <Route path="instructor/earnings"                   element={<InstructorEarningsPage />} />
         {(isInstructor || isAdmin) && (
           <>
             <Route path="courses/create"                    element={<CourseBuilderPage />} />
