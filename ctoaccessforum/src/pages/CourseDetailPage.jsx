@@ -7,6 +7,7 @@ import {
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
 import { parseVideoUrl } from '@/lib/utils'
+import { notify } from '@/lib/notifications'
 import toast from 'react-hot-toast'
 
 export default function CourseDetailPage() {
@@ -70,6 +71,17 @@ export default function CourseDetailPage() {
       })
 
       toast.success('Enrolled! Starting your first lesson…')
+
+      // notify admin
+      try {
+        await notify({
+          userId:  course?.instructorId || 'admin',
+          type:    'enrollment',
+          title:   'New Enrollment',
+          message: `${profile.displayName} enrolled in "${course?.title}"`,
+          link:    `/admin`,
+        })
+      } catch(_) {}
       const firstModule = course?.modules?.[0]
       const firstLesson = firstModule?.lessons?.[0]
       if (firstModule && firstLesson) {
