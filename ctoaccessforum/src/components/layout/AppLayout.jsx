@@ -141,6 +141,14 @@ export default function AppLayout({ children }) {
               Create Course
             </NavLink>
           )}
+          {(isAdmin || isInstructor) && (
+            <NavLink to="instructor/earnings"
+              className={({ isActive }) =>
+                `px-2.5 py-2 rounded-lg text-[0.7rem] font-medium font-[Montserrat] transition-all whitespace-nowrap
+                ${isActive ? 'text-[#FF4447] font-semibold' : 'text-gray-500 hover:text-white'}`}>
+              My Earnings
+            </NavLink>
+          )}
         </nav>
 
         {/* right side */}
@@ -198,6 +206,7 @@ export default function AppLayout({ children }) {
           {NAV.map(n => <NavItem key={n.to} {...n} />)}
           {isAdmin && <NavItem to="admin" label="Admin Panel" />}
           {(isAdmin || isInstructor) && <NavItem to="courses/create" label="Create Course" />}
+          {(isAdmin || isInstructor) && <NavItem to="instructor/earnings" label="My Earnings" />}
           <NavItem to="notifications" label={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'} />
 
           <div className="mt-4 mb-1.5 px-3 text-[0.58rem] font-bold tracking-[.14em] uppercase text-gray-700">
