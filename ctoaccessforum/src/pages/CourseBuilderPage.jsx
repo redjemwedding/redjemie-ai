@@ -626,9 +626,12 @@ export default function CourseBuilderPage() {
                     <option value="paid">Paid (AED)</option>
                   </select>
                   {!info.isFree && (
-                    <input type="number" min={1} value={info.price}
-                      onChange={ev => setInfo(i => ({ ...i, price: +ev.target.value }))}
-                      placeholder="AED" className={ic} />
+                    <input type="text" inputMode="numeric" value={info.price || ''}
+                      onChange={ev => {
+                        const val = ev.target.value.replace(/[^0-9]/g, '')
+                        setInfo(i => ({ ...i, price: val === '' ? 0 : parseInt(val) }))
+                      }}
+                      placeholder="Enter price in AED e.g. 299" className={ic} />
                   )}
                 </div>
                 {!info.isFree && (
