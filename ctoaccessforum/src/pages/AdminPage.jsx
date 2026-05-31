@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  collection, query, orderBy, onSnapshot,
+  collection, query, orderBy, onSnapshot, getDocs,
   updateDoc, deleteDoc, doc, setDoc, serverTimestamp, where
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -365,6 +365,8 @@ export default function AdminPage() {
   const [courses,      setCourses]      = useState([])
   const [allCourses,   setAllCourses]   = useState([])
   const [codes,        setCodes]        = useState([])
+  const [enrollments,  setEnrollments]  = useState([])
+  const [enrolLoading, setEnrolLoading] = useState(false)
   const [genCount,     setGenCount]     = useState(1)
   const [genPlan,      setGenPlan]      = useState('free')
   const [search,       setSearch]       = useState('')
@@ -397,6 +399,9 @@ export default function AdminPage() {
           all.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
           setCodes(all)
         }),
+      onSnapshot(query(collection(db, 'enrollments'), orderBy('enrolledAt', 'desc')),
+        s => setEnrollments(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+        () => {}),
     ]
     return () => unsubs.forEach(u => u())
   }, [isAdmin])
@@ -532,11 +537,13 @@ export default function AdminPage() {
   ]
 
   const TABS = [
-    { id: 'users',   label: 'Users',           count: users.length },
-    { id: 'queue',   label: 'Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
-    { id: 'apps',    label: 'Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
-    { id: 'courses', label: 'Course Review',   count: pendingCourses },
-    { id: 'codes',   label: 'Invite Codes',    count: unusedCodes.length },
+    { id: 'users',       label: 'Users',           count: users.length },
+    { id: 'queue',       label: 'Approval Queue',  count: queue.filter(u => u.status === 'pending').length },
+    { id: 'apps',        label: 'Instructor Apps', count: apps.filter(a => a.status === 'pending').length },
+    { id: 'courses',     label: 'Course Review',   count: pendingCourses },
+    { id: 'enrollments', label: 'Enrollments',     count: enrollments.length },
+    { id: 'revenue',     label: 'Revenue',         count: 0 },
+    { id: 'codes',       label: 'Invite Codes',    count: unusedCodes.length },
   ]
 
   return (
@@ -785,6 +792,191 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {/* ── ENROLLMENTS TAB ── */}
+      {tab === 'enrollments' && (() => {
+        const [enrolSearch, setEnrolSearch] = useState('')
+        const filtered = enrollments.filter(e => {
+          if (!enrolSearch) return true
+          const s = enrolSearch.toLowerCase()
+          return (e.studentName||'').toLowerCase().includes(s) ||
+                 (e.courseTitle||'').toLowerCase().includes(s) ||
+                 (e.instructorName||'').toLowerCase().includes(s)
+        })
+        const totalStudents = new Set(enrollments.map(e => e.studentId)).size
+
+        return (
+          <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-white/[.05]">
+              {[
+                { l: 'Total Enrollments', v: enrollments.length,                            c: 'text-white' },
+                { l: 'Unique Students',   v: totalStudents,                                  c: 'text-blue-400' },
+                { l: 'Paid',             v: enrollments.filter(e => !e.isFree).length,      c: 'text-green-400' },
+                { l: 'Free',             v: enrollments.filter(e =>  e.isFree).length,      c: 'text-gray-400' },
+              ].map(s => (
+                <div key={s.l} className="bg-[#0d0d0d] border border-white/[.05] rounded-[10px] p-3 text-center">
+                  <div className={`font-[Montserrat] font-black text-[1.4rem] ${s.c}`}>{s.v}</div>
+                  <div className="text-[0.6rem] text-gray-500 font-[Montserrat] font-bold uppercase tracking-wide mt-0.5">{s.l}</div>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-b border-white/[.05]">
+              <input value={enrolSearch} onChange={e => setEnrolSearch(e.target.value)}
+                placeholder="Search student, course, or instructor…"
+                className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[8px] px-3 py-2 text-[0.8rem] text-white outline-none focus:border-[#E5181B]/40 placeholder-gray-600"/>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[0.75rem]">
+                <thead>
+                  <tr className="border-b border-white/[.05]">
+                    {['Student','Course','Instructor','Price (AED)','Instructor Share','Platform Share','Status','Enrolled'].map(h => (
+                      <th key={h} className="text-left px-4 py-2.5 text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center py-12 text-gray-600 text-[0.8rem]">No enrollments yet</td></tr>
+                  ) : filtered.map(e => (
+                    <tr key={e.id} className="border-b border-white/[.03] hover:bg-white/[.02] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-white">{e.studentName||'—'}</div>
+                        <div className="text-[0.65rem] text-gray-500">{e.studentEmail||''}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-white max-w-[180px] leading-snug">{e.courseTitle||'—'}</div>
+                        <div className="text-[0.62rem] text-gray-600 mt-0.5">{e.category||''}</div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-300">{e.instructorName||'—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-[Montserrat] font-bold ${e.isFree?'text-gray-500':'text-green-400'}`}>
+                          {e.isFree ? 'Free' : `AED ${e.price}`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-blue-400 font-[Montserrat] font-bold">{e.isFree?'—':`AED ${e.instructorShare}`}</td>
+                      <td className="px-4 py-3 text-amber-400 font-[Montserrat] font-bold">{e.isFree?'—':`AED ${e.platformShare}`}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full font-[Montserrat] ${e.status==='completed'?'bg-green-900/30 text-green-300 border border-green-500/25':'bg-blue-900/30 text-blue-300 border border-blue-500/25'}`}>
+                          {e.status||'active'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-[0.7rem] whitespace-nowrap">
+                        {e.enrolledAt?.toDate?.()?.toLocaleDateString('en-AE',{day:'2-digit',month:'short',year:'numeric'})||'—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── REVENUE TAB ── */}
+      {tab === 'revenue' && (() => {
+        const paid             = enrollments.filter(e => !e.isFree)
+        const totalRevenue     = paid.reduce((s,e) => s + (e.price||0), 0)
+        const totalInstructor  = paid.reduce((s,e) => s + (e.instructorShare||0), 0)
+        const totalPlatform    = paid.reduce((s,e) => s + (e.platformShare||0), 0)
+
+        const byInstructor = {}
+        paid.forEach(e => {
+          const k = e.instructorId||'unknown'
+          if (!byInstructor[k]) byInstructor[k] = { name:e.instructorName||'Unknown', enrollments:0, totalRevenue:0, instructorShare:0, platformShare:0 }
+          byInstructor[k].enrollments++
+          byInstructor[k].totalRevenue   += e.price||0
+          byInstructor[k].instructorShare += e.instructorShare||0
+          byInstructor[k].platformShare  += e.platformShare||0
+        })
+        const byCourse = {}
+        paid.forEach(e => {
+          const k = e.courseId
+          if (!byCourse[k]) byCourse[k] = { title:e.courseTitle||'Unknown', instructor:e.instructorName||'—', enrollments:0, totalRevenue:0, instructorShare:0, platformShare:0 }
+          byCourse[k].enrollments++
+          byCourse[k].totalRevenue    += e.price||0
+          byCourse[k].instructorShare += e.instructorShare||0
+          byCourse[k].platformShare   += e.platformShare||0
+        })
+
+        const SCard = ({l,v,sub,c='text-white'}) => (
+          <div className="bg-[#0d0d0d] border border-white/[.05] rounded-[12px] p-4">
+            <div className="text-[0.6rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1">{l}</div>
+            <div className={`font-[Montserrat] font-black text-[1.6rem] ${c}`}>AED {v.toLocaleString()}</div>
+            {sub && <div className="text-[0.65rem] text-gray-600 mt-0.5">{sub}</div>}
+          </div>
+        )
+
+        return (
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <SCard l="Total Revenue Collected" v={totalRevenue}    c="text-green-400" sub={`${paid.length} paid enrollments`}/>
+              <SCard l="Instructor Payouts Owed" v={totalInstructor} c="text-blue-400"  sub="60% of each paid enrollment"/>
+              <SCard l="Platform Earnings"        v={totalPlatform}  c="text-amber-400" sub="40% of each paid enrollment"/>
+            </div>
+
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/[.05]">
+                <h3 className="font-[Montserrat] font-black text-[0.85rem] text-white">Revenue by Instructor</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[0.75rem]">
+                  <thead><tr className="border-b border-white/[.05]">
+                    {['Instructor','Enrollments','Total Revenue','Their Share (60%)','Platform (40%)','Payout'].map(h => (
+                      <th key={h} className="text-left px-4 py-2.5 text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {Object.values(byInstructor).length === 0
+                      ? <tr><td colSpan={6} className="text-center py-10 text-gray-600 text-[0.8rem]">No paid enrollments yet</td></tr>
+                      : Object.values(byInstructor).sort((a,b)=>b.totalRevenue-a.totalRevenue).map((r,i) => (
+                        <tr key={i} className="border-b border-white/[.03] hover:bg-white/[.02] transition-colors">
+                          <td className="px-4 py-3 font-medium text-white">{r.name}</td>
+                          <td className="px-4 py-3 text-gray-300">{r.enrollments}</td>
+                          <td className="px-4 py-3 text-green-400 font-[Montserrat] font-bold">AED {r.totalRevenue.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-blue-400 font-[Montserrat] font-bold">AED {r.instructorShare.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-amber-400 font-[Montserrat] font-bold">AED {r.platformShare.toLocaleString()}</td>
+                          <td className="px-4 py-3"><span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full font-[Montserrat] bg-amber-900/30 text-amber-300 border border-amber-500/25">Pending</span></td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/[.05]">
+                <h3 className="font-[Montserrat] font-black text-[0.85rem] text-white">Revenue by Course</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[0.75rem]">
+                  <thead><tr className="border-b border-white/[.05]">
+                    {['Course','Instructor','Enrollments','Total Revenue','Instructor (60%)','Platform (40%)'].map(h => (
+                      <th key={h} className="text-left px-4 py-2.5 text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {Object.values(byCourse).length === 0
+                      ? <tr><td colSpan={6} className="text-center py-10 text-gray-600 text-[0.8rem]">No paid enrollments yet</td></tr>
+                      : Object.values(byCourse).sort((a,b)=>b.totalRevenue-a.totalRevenue).map((r,i) => (
+                        <tr key={i} className="border-b border-white/[.03] hover:bg-white/[.02] transition-colors">
+                          <td className="px-4 py-3 text-white max-w-[200px] leading-snug">{r.title}</td>
+                          <td className="px-4 py-3 text-gray-400">{r.instructor}</td>
+                          <td className="px-4 py-3 text-gray-300">{r.enrollments}</td>
+                          <td className="px-4 py-3 text-green-400 font-[Montserrat] font-bold">AED {r.totalRevenue.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-blue-400 font-[Montserrat] font-bold">AED {r.instructorShare.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-amber-400 font-[Montserrat] font-bold">AED {r.platformShare.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
     </div>
   )
 }
