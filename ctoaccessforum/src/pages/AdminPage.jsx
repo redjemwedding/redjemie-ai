@@ -369,6 +369,7 @@ export default function AdminPage() {
   const [enrolLoading,  setEnrolLoading]  = useState(false)
   const [enrolSearch,   setEnrolSearch]   = useState('')
   const [pendingPay,    setPendingPay]    = useState([])
+  const [certPay,       setCertPay]       = useState([])
   const [settings,       setSettings]       = useState(null)
   const [savingSettings, setSavingSettings]  = useState(false)
   const [settingsForm,   setSettingsForm]    = useState({
@@ -412,6 +413,9 @@ export default function AdminPage() {
         () => {}),
       onSnapshot(query(collection(db, 'pendingPayments'), orderBy('submittedAt', 'desc')),
         s => setPendingPay(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+        () => {}),
+      onSnapshot(query(collection(db, 'certPayments'), orderBy('submittedAt', 'desc')),
+        s => setCertPay(s.docs.map(d => ({ id: d.id, ...d.data() }))),
         () => {}),
       onSnapshot(doc(db, 'settings', 'payment'),
         snap => {
@@ -563,6 +567,7 @@ export default function AdminPage() {
     { id: 'apps',        label: 'Instructor Apps',  count: apps.filter(a => a.status === 'pending').length },
     { id: 'courses',     label: 'Course Review',    count: pendingCourses },
     { id: 'payments',    label: 'Pending Payments', count: pendingPay.filter(p => p.status === 'pending').length },
+    { id: 'certpay',     label: 'Cert Payments',    count: certPay.filter(p => p.status === 'pending').length },
     { id: 'enrollments', label: 'Enrollments',      count: enrollments.length },
     { id: 'revenue',     label: 'Revenue',          count: 0 },
     { id: 'codes',       label: 'Invite Codes',     count: unusedCodes.length },
@@ -921,6 +926,92 @@ export default function AdminPage() {
                               try {
                                 await updateDoc(doc(db,'pendingPayments',p.id), { status:'rejected', rejectedAt: serverTimestamp() })
                                 toast.success('Payment rejected')
+                              } catch(e) { toast.error(e.message) }
+                            }}
+                            className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-red-900/20 text-red-300 border border-red-500/20 hover:bg-red-900/30 transition-colors">
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── CERT PAYMENTS TAB ── */}
+      {tab === 'certpay' && (
+        <div className="bg-[#111] border border-white/[.06] rounded-[12px] overflow-hidden">
+          <div className="grid grid-cols-3 gap-3 p-4 border-b border-white/[.05]">
+            {[
+              { l:'Pending',  v: certPay.filter(p=>p.status==='pending').length,  c:'text-amber-400' },
+              { l:'Approved', v: certPay.filter(p=>p.status==='approved').length, c:'text-green-400' },
+              { l:'Rejected', v: certPay.filter(p=>p.status==='rejected').length, c:'text-red-400'   },
+            ].map(s => (
+              <div key={s.l} className="bg-[#0d0d0d] border border-white/[.05] rounded-[10px] p-3 text-center">
+                <div className={`font-[Montserrat] font-black text-[1.4rem] ${s.c}`}>{s.v}</div>
+                <div className="text-[0.6rem] text-gray-500 font-[Montserrat] font-bold uppercase tracking-wide mt-0.5">{s.l}</div>
+              </div>
+            ))}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[0.75rem]">
+              <thead>
+                <tr className="border-b border-white/[.05]">
+                  {['Student','Course','Fee','Method','Ref','Submitted','Status','Action'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-[0.62rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {certPay.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-600 text-[0.8rem]">No certificate payment submissions yet</td></tr>
+                ) : certPay.map(p => (
+                  <tr key={p.id} className="border-b border-white/[.03] hover:bg-white/[.02]">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-white">{p.studentName||'—'}</div>
+                      <div className="text-[0.65rem] text-gray-500">{p.studentEmail||''}</div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-300 max-w-[160px] leading-snug">{p.courseTitle||'—'}</td>
+                    <td className="px-4 py-3 text-green-400 font-[Montserrat] font-bold">AED {p.certPrice}</td>
+                    <td className="px-4 py-3 text-gray-300 capitalize">{p.method||'—'}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-[0.7rem]">{p.reference||'—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-[0.7rem] whitespace-nowrap">
+                      {p.submittedAt?.toDate?.()?.toLocaleDateString('en-AE',{day:'2-digit',month:'short',year:'numeric'})||'—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full font-[Montserrat] ${
+                        p.status==='approved' ? 'bg-green-900/30 text-green-300 border border-green-500/25' :
+                        p.status==='rejected' ? 'bg-red-900/30 text-red-300 border border-red-500/25' :
+                        'bg-amber-900/30 text-amber-300 border border-amber-500/25'}`}>
+                        {p.status||'pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                // approve → write certPayment doc so student's page unlocks
+                                await setDoc(doc(db, 'certPayments', `${p.studentId}_${p.courseId}`), {
+                                  ...p, status: 'approved', approvedAt: serverTimestamp()
+                                })
+                                await updateDoc(doc(db, 'certPayments', p.id), { status:'approved', approvedAt: serverTimestamp() })
+                                toast.success(`Certificate approved for ${p.studentName}`)
+                              } catch(e) { toast.error(e.message) }
+                            }}
+                            className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-green-900/20 text-green-300 border border-green-500/20 hover:bg-green-900/30 transition-colors">
+                            Approve
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await updateDoc(doc(db,'certPayments',p.id), { status:'rejected', rejectedAt: serverTimestamp() })
+                                toast.success('Rejected')
                               } catch(e) { toast.error(e.message) }
                             }}
                             className="text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] bg-red-900/20 text-red-300 border border-red-500/20 hover:bg-red-900/30 transition-colors">
