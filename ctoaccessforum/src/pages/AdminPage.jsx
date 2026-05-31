@@ -369,8 +369,12 @@ export default function AdminPage() {
   const [enrolLoading,  setEnrolLoading]  = useState(false)
   const [enrolSearch,   setEnrolSearch]   = useState('')
   const [pendingPay,    setPendingPay]    = useState([])
-  const [settings,      setSettings]      = useState(null)
-  const [savingSettings, setSavingSettings] = useState(false)
+  const [settings,       setSettings]       = useState(null)
+  const [savingSettings, setSavingSettings]  = useState(false)
+  const [settingsForm,   setSettingsForm]    = useState({
+    bankName:'', accountName:'', accountNumber:'', iban:'',
+    instapayId:'', whatsapp:'+971506328968', email:'info@redjemie.com', notes:''
+  })
   const [genCount,     setGenCount]     = useState(1)
   const [genPlan,      setGenPlan]      = useState('free')
   const [search,       setSearch]       = useState('')
@@ -410,11 +414,14 @@ export default function AdminPage() {
         s => setPendingPay(s.docs.map(d => ({ id: d.id, ...d.data() }))),
         () => {}),
       onSnapshot(doc(db, 'settings', 'payment'),
-        snap => setSettings(snap.exists() ? snap.data() : {
-          bankName: '', accountName: '', accountNumber: '', iban: '',
-          instapayId: '', whatsapp: '+971506328968', email: 'info@redjemie.com',
-          notes: ''
-        }),
+        snap => {
+          const data = snap.exists() ? snap.data() : {
+            bankName:'', accountName:'', accountNumber:'', iban:'',
+            instapayId:'', whatsapp:'+971506328968', email:'info@redjemie.com', notes:''
+          }
+          setSettings(data)
+          setSettingsForm(data)
+        },
         () => {}),
     ]
     return () => unsubs.forEach(u => u())
@@ -1109,21 +1116,122 @@ export default function AdminPage() {
       })()}
 
       {/* ── SETTINGS TAB ── */}
-      {tab === 'settings' && settings && (() => {
-        const [form, setForm] = useState({ ...settings })
-        const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-        const ic = "w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"
+      {tab === 'settings' && (
+        <div className="flex flex-col gap-5 max-w-[640px]">
 
-        async function saveSettings() {
-          setSavingSettings(true)
-          try {
-            await setDoc(doc(db, 'settings', 'payment'), { ...form, updatedAt: serverTimestamp() })
-            toast.success('Payment settings saved!')
-          } catch(e) { toast.error(e.message) }
-          finally { setSavingSettings(false) }
-        }
+          {/* Bank Transfer */}
+          <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-[8px] bg-blue-900/20 border border-blue-500/20 flex items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <h3 className="font-[Montserrat] font-black text-[0.88rem]">Bank Transfer Details</h3>
+            </div>
+            <div className="flex flex-col gap-3">
+              {[
+                { k:'bankName',      l:'Bank Name',      p:'e.g. Emirates NBD' },
+                { k:'accountName',   l:'Account Name',   p:'e.g. RJ Global Technologies' },
+                { k:'accountNumber', l:'Account Number', p:'e.g. 1234567890' },
+                { k:'iban',          l:'IBAN',           p:'e.g. AE07 0331 2345 6789 0123 456' },
+              ].map(f => (
+                <div key={f.k}>
+                  <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">{f.l}</label>
+                  <input type="text" placeholder={f.p}
+                    value={settingsForm[f.k] || ''}
+                    onChange={e => setSettingsForm(s => ({ ...s, [f.k]: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"/>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        return (
+          {/* InstaPay */}
+          <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-[8px] bg-green-900/20 border border-green-500/20 flex items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+              </div>
+              <h3 className="font-[Montserrat] font-black text-[0.88rem]">InstaPay</h3>
+            </div>
+            <div>
+              <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">InstaPay ID / Mobile Number</label>
+              <input type="text" placeholder="+971 XX XXX XXXX"
+                value={settingsForm.instapayId || ''}
+                onChange={e => setSettingsForm(s => ({ ...s, instapayId: e.target.value }))}
+                className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"/>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-[8px] bg-red-900/20 border border-red-500/20 flex items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E5181B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <h3 className="font-[Montserrat] font-black text-[0.88rem]">Contact for Payment Proof</h3>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">WhatsApp Number</label>
+                <input type="text" placeholder="+971 506 328 968"
+                  value={settingsForm.whatsapp || ''}
+                  onChange={e => setSettingsForm(s => ({ ...s, whatsapp: e.target.value }))}
+                  className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"/>
+              </div>
+              <div>
+                <label className="block text-[0.65rem] font-bold font-[Montserrat] text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+                <input type="email" placeholder="info@redjemie.com"
+                  value={settingsForm.email || ''}
+                  onChange={e => setSettingsForm(s => ({ ...s, email: e.target.value }))}
+                  className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors"/>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="bg-[#111] border border-white/[.06] rounded-[12px] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-[8px] bg-amber-900/20 border border-amber-500/20 flex items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <h3 className="font-[Montserrat] font-black text-[0.88rem]">Additional Notes for Students</h3>
+            </div>
+            <textarea rows={3}
+              placeholder="e.g. Please include your full name as payment reference..."
+              value={settingsForm.notes || ''}
+              onChange={e => setSettingsForm(s => ({ ...s, notes: e.target.value }))}
+              className="w-full bg-[#0d0d0d] border border-white/[.06] rounded-[10px] px-3.5 py-2.5 text-white text-[0.81rem] outline-none font-[Poppins] placeholder-gray-600 focus:border-[rgba(229,24,27,.3)] transition-colors resize-none"/>
+          </div>
+
+          <button
+            onClick={async () => {
+              setSavingSettings(true)
+              try {
+                await setDoc(doc(db, 'settings', 'payment'), { ...settingsForm, updatedAt: serverTimestamp() })
+                toast.success('Payment settings saved!')
+              } catch(e) { toast.error(e.message) }
+              finally { setSavingSettings(false) }
+            }}
+            disabled={savingSettings}
+            className="w-full py-3 bg-[#E5181B] hover:bg-[#C01215] disabled:opacity-40 text-white font-[Montserrat] font-black text-[0.88rem] rounded-[12px] transition-all flex items-center justify-center gap-2">
+            {savingSettings
+              ? <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+              : 'Save Payment Settings'}
+          </button>
+
+          <p className="text-center text-[0.65rem] text-gray-600">
+            Changes are live immediately — students will see updated details on their next enrollment.
+          </p>
+        </div>
+      )}
           <div className="flex flex-col gap-5 max-w-[640px]">
 
             {/* Bank Transfer */}
@@ -1215,8 +1323,7 @@ export default function AdminPage() {
               Changes are live immediately — students will see updated details on their next enrollment.
             </p>
           </div>
-        )
-      })()}
+        )}
 
     </div>
   )
