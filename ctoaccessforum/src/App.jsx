@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useState } from 'react'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import AppLayout from '@/components/layout/AppLayout'
+import LandingPage from '@/pages/LandingPage'
 import AuthPage from '@/pages/AuthPage'
 import PendingPage from '@/pages/PendingPage'
 import VerifyPage from '@/pages/VerifyPage'
@@ -55,8 +57,16 @@ export default function App() {
 
 function AppRoutes() {
   const { user, loading, isAdmin, isApproved, isVerified, isInstructor } = useAuth()
-  if (loading)                 return <Spinner />
-  if (!user)                   return <AuthPage />
+  const [showAuth, setShowAuth] = useState(false)
+
+  if (loading) return <Spinner />
+
+  // Not logged in — show landing or auth
+  if (!user) {
+    if (showAuth) return <AuthPage />
+    return <LandingPage onEnter={() => setShowAuth(true)} />
+  }
+
   if (!isVerified)             return <VerifyPage />
   if (!isApproved && !isAdmin) return <PendingPage />
 
