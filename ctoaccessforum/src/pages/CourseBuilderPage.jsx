@@ -418,6 +418,7 @@ export default function CourseBuilderPage() {
   const [info, setInfo] = useState({
     title: '', description: '', category: '', level: 'Beginner',
     price: 0, isFree: true, thumbnail: '', thumbnailUrl: '',
+    certPrice: 49, certFree: false,
     trailerUrl: '', whatYouLearn: '', requirements: '',
   })
 
@@ -439,6 +440,7 @@ export default function CourseBuilderPage() {
           title: d.title || '', description: d.description || '',
           category: d.category || '', level: d.level || 'Beginner',
           price: d.price || 0, isFree: d.isFree ?? true,
+          certPrice: d.certPrice ?? 49, certFree: d.certFree ?? false,
           thumbnail: d.thumbnail || '', thumbnailUrl: d.thumbnailUrl || '',
           trailerUrl: d.trailerUrl || '',
           whatYouLearn: d.whatYouLearn || '', requirements: d.requirements || '',
@@ -643,6 +645,32 @@ export default function CourseBuilderPage() {
                 <input value={info.trailerUrl} onChange={ev => setInfo(i => ({ ...i, trailerUrl: ev.target.value }))}
                   placeholder="YouTube or Vimeo preview link" type="url" className={ic} />
               </div>
+            </div>
+
+            {/* Certificate pricing — its own row */}
+            <div>
+              <label className={label}>Certificate Pricing</label>
+              <div className="flex gap-2 items-center">
+                <select value={info.certFree ? 'free' : 'paid'}
+                  onChange={ev => setInfo(i => ({ ...i, certFree: ev.target.value === 'free', certPrice: ev.target.value === 'free' ? 0 : (i.certPrice || 49) }))}
+                  className={ic}>
+                  <option value="free">Free Certificate</option>
+                  <option value="paid">Paid Certificate (AED)</option>
+                </select>
+                {!info.certFree && (
+                  <input type="text" inputMode="numeric" value={info.certPrice || ''}
+                    onChange={ev => {
+                      const val = ev.target.value.replace(/[^0-9]/g, '')
+                      setInfo(i => ({ ...i, certPrice: val === '' ? 49 : parseInt(val) }))
+                    }}
+                    placeholder="e.g. 49" className={`${ic} max-w-[120px]`} />
+                )}
+              </div>
+              <p className="text-[0.65rem] text-gray-600 mt-1">
+                {info.certFree
+                  ? 'Certificate is free — students get it automatically on completion.'
+                  : `Students pay AED ${info.certPrice || 49} to receive their verified certificate.`}
+              </p>
             </div>
             <div>
               <label className={label}>Thumbnail Image</label>
