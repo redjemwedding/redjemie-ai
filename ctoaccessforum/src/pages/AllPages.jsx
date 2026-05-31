@@ -477,7 +477,10 @@ export function CoursesPage() {
                   <div className="font-[Montserrat] font-bold text-[0.85rem] mb-1.5 leading-snug">{c.title}</div>
                   <div className="text-[0.67rem] text-gray-500 mb-3">{c.instructorName || 'CTO Access'}</div>
                   <div className="flex items-center justify-between border-t border-white/[.05] pt-3">
-                    <div className="text-[0.64rem] text-gray-500">{c.lessons || 0} lessons</div>
+                    <div className="text-[0.64rem] text-gray-500">
+                      {c.lessons || 0} lessons
+                      {c.enrollmentCount > 0 && <span className="ml-2 text-gray-600">· {c.enrollmentCount} enrolled</span>}
+                    </div>
                     <button
                       onClick={ev => { ev.stopPropagation(); handleEnroll(c) }}
                       className={`text-[0.68rem] font-bold font-[Montserrat] px-2.5 py-1 rounded-[6px] transition-colors ${enrolled ? 'bg-blue-900/20 text-blue-400 border border-blue-500/20' : 'bg-[rgba(229,24,27,.1)] text-[#FF4447] border border-red-500/20'}`}>
